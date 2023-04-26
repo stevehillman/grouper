@@ -42,21 +42,12 @@ public class ProvisioningEntity extends ProvisioningUpdatable {
         continue;
       }
       
-      for (Object value : GrouperUtil.nonNull(provisioningEntity.retrieveAttributeValueSet(membershipAttribute))) {
+      for (Object value : GrouperUtil.nonNull(provisioningEntity.retrieveAttributeValueSetForMemberships())) {
         ProvisioningEntity provisioningUpdatableClone = (ProvisioningEntity)provisioningEntity.cloneWithoutMemberships();
 
         ProvisioningMembershipWrapper provisioningMembershipWrapper = GrouperUtil.nonNull(provisioningAttribute.getValueToProvisioningMembershipWrapper()).get(value);
 
-        if (provisioningMembershipWrapper != null) {
-          try {
-            GrouperProvisioningTranslator.assignThreadLocalProvisioningMembershipWrapper(provisioningMembershipWrapper);
-            provisioningUpdatableClone.addAttributeValueForMembership(membershipAttribute, value);
-          } finally {
-            GrouperProvisioningTranslator.clearThreadLocalProvisioningMembershipWrapper();
-          }
-        } else {
-          provisioningUpdatableClone.addAttributeValue(membershipAttribute, value);
-        }
+        provisioningUpdatableClone.addAttributeValueForMembership(value, provisioningMembershipWrapper, false);
         
         result.add(provisioningUpdatableClone);
       }

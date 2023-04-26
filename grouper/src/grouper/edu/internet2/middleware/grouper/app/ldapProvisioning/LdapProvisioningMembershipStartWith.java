@@ -30,6 +30,8 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
   public void populateProvisionerConfigurationValuesFromStartWith(Map<String, String> startWithSuffixToValue,
       Map<String, Object> provisionerSuffixToValue) {
     
+    int groupAttributes = 0;
+    int entityAttributes = 0;
     
     if (StringUtils.equals(startWithSuffixToValue.get("userAttributesType"), "entityResolver") || StringUtils.equals(startWithSuffixToValue.get("userAttributesType"), "subjectSourceAndEntityResolver")) {
       provisionerSuffixToValue.put("entityResolver.entityAttributesNotInSubjectSource", "true");
@@ -43,9 +45,9 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
       if (StringUtils.isNotBlank(attributesCommaSeparated)) {
         provisionerSuffixToValue.put("entityAttributeValueCacheHas", "true");
         String[] attributes = GrouperUtil.splitTrim(attributesCommaSeparated, ",");
-        // by this time the validation is already done that there are no more than 3 attributes
+        // by this time the validation is already done that there are no more than 2 attributes
         for (int i=0; i<attributes.length; i++) {
-          int j = i+1;
+          int j = i+2;
           provisionerSuffixToValue.put("entityAttributeValueCache"+j+"has", "true");
           provisionerSuffixToValue.put("entityAttributeValueCache"+j+"source", "grouper");
           provisionerSuffixToValue.put("entityAttributeValueCache"+j+"type", "subjectTranslationScript");
@@ -80,18 +82,16 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
       provisionerSuffixToValue.put("operateOnGrouperGroups", "true");
       
       provisionerSuffixToValue.put("hasTargetGroupLink", "true");
-      
-      int groupAttributes = 0;
-      
+            
       String groupRdnAttribute = startWithSuffixToValue.get("groupRdnAttribute");
       
       provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".name", "ldap_dn");
       
       provisionerSuffixToValue.put("groupAttributeValueCacheHas", "true");
+      
       provisionerSuffixToValue.put("groupAttributeValueCache0has", "true");
       provisionerSuffixToValue.put("groupAttributeValueCache0source", "target");
       provisionerSuffixToValue.put("groupAttributeValueCache0type", "groupAttribute");
-      
       provisionerSuffixToValue.put("groupAttributeValueCache0groupAttribute", "ldap_dn");
 
       groupAttributes++;
@@ -112,29 +112,12 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
           provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpression", "${"+GrouperUtil.class.getName()+".stringFormatNameReverseReplaceTruncate(grouperProvisioningGroup.name, '_', 64)}");
         } else if (StringUtils.equals(rdnValueForGroups, "extensionUnderscoreIdIndex")) {
           provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpression", "${grouperProvisioningGroup.extension+'_'+grouperProvisioningGroup.idIndex}");
+        } else if (StringUtils.equals(rdnValueForGroups, "script")) {
+          provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpression", startWithSuffixToValue.get("rdnValueForGroupsTranslationScript"));
         }
                 
       }
       groupAttributes++;
-
-      if (StringUtils.equals(startWithSuffixToValue.get("membershipStructure"), "groupAttributes")) {
-
-        String membershipAttributeNameForGroups = startWithSuffixToValue.get("membershipAttributeNameForGroups");
-        
-        provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".name", membershipAttributeNameForGroups);
-        provisionerSuffixToValue.put("groupMembershipAttributeName", membershipAttributeNameForGroups);
-        
-        if (!GrouperUtil.booleanValue(startWithSuffixToValue.get("membershipValueDn"), false)) {
-          
-          // groupMembershipAttributeValue will be copied over
-        } else {
-          provisionerSuffixToValue.put("groupMembershipAttributeValue", "entityAttributeValueCache0");
-          
-        }
-        
-        groupAttributes++;
-        
-      }
       
       String idIndexAttribute = startWithSuffixToValue.get("idIndexAttribute");
       if (StringUtils.isNotBlank(idIndexAttribute)) {
@@ -145,8 +128,8 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
         groupAttributes++;
         
       }
-      
-      provisionerSuffixToValue.put("groupMatchingAttributeCount", "1");
+            
+      String groupAttributeValueCache1Attribute = null;
       
       if (GrouperUtil.booleanValue(startWithSuffixToValue.get("matchingSearchAttributeDifferentThanRdnorIdIndex"), false)) {
         
@@ -161,15 +144,36 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
           provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateFromGrouperProvisioningGroupField", matchingSearchAttributeValueForGroups);
         } else if (StringUtils.equalsAny(matchingSearchAttributeValueForGroups, "script")){
           provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpressionType", "translationScript");
+          provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpression", startWithSuffixToValue.get("matchingSearchAttributeValueForGroupsTranslationScript"));
         }
         
         groupAttributes++;
         
+        provisionerSuffixToValue.put("groupMatchingAttributeCount", "1");
         provisionerSuffixToValue.put("groupMatchingAttribute0name", matchingSearchAttributeNameForGroups);
         
+        if (!"ldap_dn".equals(matchingSearchAttributeNameForGroups)) {
+          groupAttributeValueCache1Attribute = matchingSearchAttributeNameForGroups;
+        }
       } else {
         
-        provisionerSuffixToValue.put("groupMatchingAttribute0name", idIndexAttribute);
+        if (GrouperUtil.isBlank(idIndexAttribute)) {
+          provisionerSuffixToValue.put("groupMatchingAttributeCount", "1");
+          provisionerSuffixToValue.put("groupMatchingAttribute0name", "ldap_dn");
+        } else {
+          provisionerSuffixToValue.put("groupMatchingAttributeCount", "2");
+          provisionerSuffixToValue.put("groupMatchingAttribute0name", idIndexAttribute);
+          provisionerSuffixToValue.put("groupMatchingAttribute1name", "ldap_dn");
+          
+          groupAttributeValueCache1Attribute = idIndexAttribute;
+        }
+      }
+      
+      if (!GrouperUtil.isBlank(groupAttributeValueCache1Attribute)) {
+        provisionerSuffixToValue.put("groupAttributeValueCache1has", "true");
+        provisionerSuffixToValue.put("groupAttributeValueCache1source", "target");
+        provisionerSuffixToValue.put("groupAttributeValueCache1type", "groupAttribute");
+        provisionerSuffixToValue.put("groupAttributeValueCache1groupAttribute", groupAttributeValueCache1Attribute);
       }
       
       String objectClassesForGroups = startWithSuffixToValue.get("objectClassesForGroups");
@@ -201,10 +205,7 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
           groupAttributes++;
         }
         
-      }
-      
-      provisionerSuffixToValue.put("numberOfGroupAttributes", groupAttributes);
-      
+      }      
     }
     
     if (StringUtils.equals(startWithSuffixToValue.get("membershipStructure"), "entityAttributes") || 
@@ -218,17 +219,15 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
       provisionerSuffixToValue.put("operateOnGrouperEntities", "true");
       
       provisionerSuffixToValue.put("entityAttributeValueCacheHas", "true");
+      
       provisionerSuffixToValue.put("entityAttributeValueCache0has", "true");
       provisionerSuffixToValue.put("entityAttributeValueCache0source", "target");
       provisionerSuffixToValue.put("entityAttributeValueCache0type", "entityAttribute");
-      
       provisionerSuffixToValue.put("entityAttributeValueCache0entityAttribute", "ldap_dn");
       
 
       boolean changeEntitiesInLdap = GrouperUtil.booleanValue(startWithSuffixToValue.get("changeEntitiesInLdap"), false);
       
-      int entityAttributes = 0;
-
       provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".name", "ldap_dn");
       
       entityAttributes++;
@@ -246,23 +245,7 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
           
         } else if (StringUtils.equalsAny(rdnValueForEntities, "script")) {
           provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateExpressionType", "translationScript");
-        }
-        
-        entityAttributes++;
-        
-      }
-      
-      if (StringUtils.equals(startWithSuffixToValue.get("membershipStructure"), "entityAttributes")) {
-        
-        String membershipAttributeNameForEntities = startWithSuffixToValue.get("membershipAttributeNameForEntities");
-        
-        provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".name", membershipAttributeNameForEntities);
-        provisionerSuffixToValue.put("entityMembershipAttributeName", membershipAttributeNameForEntities);
-        
-        if (!GrouperUtil.booleanValue(startWithSuffixToValue.get("membershipValueDn"), false)) {
-          
-          String membershipValueForEntities = startWithSuffixToValue.get("membershipValueForEntities");
-          
+          provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateExpression", startWithSuffixToValue.get("rdnValueForEntitiesTranslationScript"));
         }
         
         entityAttributes++;
@@ -288,12 +271,19 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
           provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateFromGrouperProvisioningEntityField", matchingSearchAttributeValueForEntities);
         } else if (StringUtils.equalsAny(matchingSearchAttributeValueForEntities, "script")){
           provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateExpressionType", "translationScript");
+          provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateExpression", startWithSuffixToValue.get("matchingSearchAttributeValueForEntitiesTranslationScript"));
         }
         
         entityAttributes++;
         
         provisionerSuffixToValue.put("entityMatchingAttribute0name", matchingSearchAttributeNameForEntities);
         
+        if (!"ldap_dn".equals(matchingSearchAttributeNameForEntities)) {
+          provisionerSuffixToValue.put("entityAttributeValueCache1has", "true");
+          provisionerSuffixToValue.put("entityAttributeValueCache1source", "target");
+          provisionerSuffixToValue.put("entityAttributeValueCache1type", "entityAttribute");
+          provisionerSuffixToValue.put("entityAttributeValueCache1entityAttribute", matchingSearchAttributeNameForEntities);
+        }
       }
       
       
@@ -322,7 +312,6 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
       }
       
       
-      provisionerSuffixToValue.put("numberOfEntityAttributes", entityAttributes);
       
 //      if (StringUtils.equals(startWithSuffixToValue.get("membershipStructure"), "entityAttributes") && 
 //          !GrouperUtil.booleanValue(startWithSuffixToValue.get("membershipValueDn"), false)) {
@@ -334,11 +323,116 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
       if (GrouperUtil.booleanValue(startWithSuffixToValue.get("addDisabledFullSyncDaemon"), true) || GrouperUtil.booleanValue(startWithSuffixToValue.get("addDisabledIncrementalSyncDaemon"), true)) {
         provisionerSuffixToValue.put("showAdvanced", "true");
       }
-
-      
     }
     
+
+    if (StringUtils.equals(startWithSuffixToValue.get("membershipStructure"), "entityAttributes")) {
+      
+      String membershipAttributeNameForEntities = startWithSuffixToValue.get("membershipAttributeNameForEntities");
+      
+      provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".name", membershipAttributeNameForEntities);
+      provisionerSuffixToValue.put("entityMembershipAttributeName", membershipAttributeNameForEntities);
+      
+      if (!GrouperUtil.booleanValue(startWithSuffixToValue.get("membershipValueDn"), false)) {
+        
+        // If we haven't done anything with groups yet, then need to add minimal config here
+        if (groupAttributes == 0) {
+          provisionerSuffixToValue.put("operateOnGrouperGroups", "true");
+          provisionerSuffixToValue.put("customizeGroupCrud", "true");
+          provisionerSuffixToValue.put("selectGroups", "false");
+          provisionerSuffixToValue.put("insertGroups", "false");
+          provisionerSuffixToValue.put("deleteGroups", "false");
+          provisionerSuffixToValue.put("updateGroups", "false");
+        }
+        
+        String membershipValueForEntities = startWithSuffixToValue.get("membershipValueForEntities");
+
+        provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".name", membershipValueForEntities);
+
+        if (StringUtils.equalsAny(membershipValueForEntities, "extension", "idIndex", "name", "id")) {
+          provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpressionType", "grouperProvisioningGroupField");
+          provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateFromGrouperProvisioningGroupField", membershipValueForEntities);
+        } else if (StringUtils.equalsAny(membershipValueForEntities, "script")) {
+          provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpressionType", "translationScript");
+          provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".translateExpression", startWithSuffixToValue.get("membershipValueForEntitiesTranslationScript"));
+        }
+        
+        groupAttributes++;
+        
+        // cache membership
+        int nextAvailableGroupCacheBucketNumber = getNextAvailableGroupCacheBucketNumber(provisionerSuffixToValue);
+        provisionerSuffixToValue.put("entityMembershipAttributeValue", "groupAttributeValueCache" + nextAvailableGroupCacheBucketNumber);
+        
+        provisionerSuffixToValue.put("groupAttributeValueCacheHas", "true");
+        provisionerSuffixToValue.put("groupAttributeValueCache" + nextAvailableGroupCacheBucketNumber + "has", "true");
+        provisionerSuffixToValue.put("groupAttributeValueCache" + nextAvailableGroupCacheBucketNumber + "source", "grouper");
+        provisionerSuffixToValue.put("groupAttributeValueCache" + nextAvailableGroupCacheBucketNumber + "type", "groupAttribute");
+        provisionerSuffixToValue.put("groupAttributeValueCache" + nextAvailableGroupCacheBucketNumber + "groupAttribute", membershipValueForEntities);
+
+      } else {
+        provisionerSuffixToValue.put("entityMembershipAttributeValue", "groupAttributeValueCache0");
+      }
+      
+      entityAttributes++; 
+    }
     
+    if (StringUtils.equals(startWithSuffixToValue.get("membershipStructure"), "groupAttributes")) {
+
+      String membershipAttributeNameForGroups = startWithSuffixToValue.get("membershipAttributeNameForGroups");
+      
+      provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".name", membershipAttributeNameForGroups);
+      provisionerSuffixToValue.put("groupMembershipAttributeName", membershipAttributeNameForGroups);
+      
+      if (!GrouperUtil.booleanValue(startWithSuffixToValue.get("membershipValueDn"), false)) {
+
+        // If we haven't done anything with entities yet, then need to add minimal config here
+        if (entityAttributes == 0) {
+          provisionerSuffixToValue.put("operateOnGrouperEntities", "true");
+          provisionerSuffixToValue.put("customizeEntityCrud", "true");
+          provisionerSuffixToValue.put("selectEntities", "false");
+        }
+        
+        String membershipValueForGroups = startWithSuffixToValue.get("membershipValueForGroups");
+        provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".name", membershipValueForGroups);
+
+        if (StringUtils.equalsAny(membershipValueForGroups, "email", "idIndex", "name",  "subjectId", "subjectIdentifier0", "subjectIdentifier1", "subjectIdentifier2")) {
+          provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateExpressionType", "grouperProvisioningEntityField");
+          provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateFromGrouperProvisioningEntityField", membershipValueForGroups);
+        } else if (StringUtils.equalsAny(membershipValueForGroups, "script")) {
+          provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateExpressionType", "translationScript");
+          provisionerSuffixToValue.put("targetEntityAttribute."+entityAttributes+".translateExpression", startWithSuffixToValue.get("membershipValueForGroupsTranslationScript"));
+        }
+ 
+        entityAttributes++;
+        
+        // cache membership
+        int nextAvailableEntityCacheBucketNumber = getNextAvailableEntityCacheBucketNumber(provisionerSuffixToValue);
+        provisionerSuffixToValue.put("groupMembershipAttributeValue", "entityAttributeValueCache" + nextAvailableEntityCacheBucketNumber);
+        
+        provisionerSuffixToValue.put("entityAttributeValueCacheHas", "true");
+        provisionerSuffixToValue.put("entityAttributeValueCache" + nextAvailableEntityCacheBucketNumber + "has", "true");
+        provisionerSuffixToValue.put("entityAttributeValueCache" + nextAvailableEntityCacheBucketNumber + "source", "grouper");
+        provisionerSuffixToValue.put("entityAttributeValueCache" + nextAvailableEntityCacheBucketNumber + "type", "entityAttribute");
+        provisionerSuffixToValue.put("entityAttributeValueCache" + nextAvailableEntityCacheBucketNumber + "entityAttribute", membershipValueForGroups);
+
+
+      } else {
+        provisionerSuffixToValue.put("groupMembershipAttributeValue", "entityAttributeValueCache0");
+        
+      }
+      
+      String membershipAttributeDefaultValue = startWithSuffixToValue.get("membershipAttributeDefaultValue");
+      if (!StringUtils.isEmpty(membershipAttributeDefaultValue)) {
+        provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".showAdvancedAttribute", true);
+        provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".showAttributeValueSettings", true);
+        provisionerSuffixToValue.put("targetGroupAttribute."+groupAttributes+".defaultValue", membershipAttributeDefaultValue);
+      }
+      
+      groupAttributes++; 
+    }
+    
+    provisionerSuffixToValue.put("numberOfGroupAttributes", groupAttributes);
+    provisionerSuffixToValue.put("numberOfEntityAttributes", entityAttributes);
   }
   
   
@@ -373,8 +467,8 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
     if (subjectSourceEntityResoverModuleAttribute != null && StringUtils.isNotBlank(subjectSourceEntityResoverModuleAttribute.getValue())) {
       String commaSeparatedResolverAttributes = subjectSourceEntityResoverModuleAttribute.getValue();
       List<String> list = GrouperUtil.splitTrimToList(commaSeparatedResolverAttributes, ",");
-      if (list.size() > 3) {
-        String errorMessage = GrouperTextContainer.textOrNull("subjectSourceEntityResolverAttributesMoreThanThreeAttributes");
+      if (list.size() > 2) {
+        String errorMessage = GrouperTextContainer.textOrNull("subjectSourceEntityResolverAttributesTooManyAttributes");
         validationErrorsToDisplay.put(subjectSourceEntityResoverModuleAttribute.getHtmlForElementIdHandle(), errorMessage);
       }
     }
@@ -427,7 +521,6 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
           result.put("membershipStructure", "groupAttributes");
           result.put("membershipValueDn", "false");
           result.put("groupDnType", "bushy");
-          result.put("groupMembershipAttributeValue", "subjectId");
         } else if (StringUtils.equals(valueUserEnteredOnScreen, "flatGroupsWithMembershipDNs")) {
           result.put("membershipStructure", "groupAttributes");
           result.put("membershipValueDn", "true");
@@ -437,7 +530,6 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
           result.put("membershipStructure", "groupAttributes");
           result.put("membershipValueDn", "false");
           result.put("groupDnType", "flat");
-          result.put("groupMembershipAttributeValue", "subjectId");
         } else if (StringUtils.equals(valueUserEnteredOnScreen, "groupOfNames")) {
           result.put("membershipStructure", "groupAttributes");
           result.put("objectClassesForGroups", "top,groupOfNames");
@@ -482,4 +574,43 @@ public class LdapProvisioningMembershipStartWith extends ProvisionerStartWithBas
     return LdapProvisionerConfiguration.class;
   }
   
+  private int getNextAvailableGroupCacheBucketNumber(Map<String, Object> provisionerSuffixToValue) {
+    if (!provisionerSuffixToValue.containsKey("groupAttributeValueCache0has")) {
+      return 0;
+    }
+    
+    if (!provisionerSuffixToValue.containsKey("groupAttributeValueCache1has")) {
+      return 1;
+    }
+    
+    if (!provisionerSuffixToValue.containsKey("groupAttributeValueCache2has")) {
+      return 2;
+    }
+    
+    if (!provisionerSuffixToValue.containsKey("groupAttributeValueCache3has")) {
+      return 3;
+    }
+    
+    throw new RuntimeException("Unable to find an available group cache bucket");
+  }
+  
+  private int getNextAvailableEntityCacheBucketNumber(Map<String, Object> provisionerSuffixToValue) {
+    if (!provisionerSuffixToValue.containsKey("entityAttributeValueCache0has")) {
+      return 0;
+    }
+    
+    if (!provisionerSuffixToValue.containsKey("entityAttributeValueCache1has")) {
+      return 1;
+    }
+    
+    if (!provisionerSuffixToValue.containsKey("entityAttributeValueCache2has")) {
+      return 2;
+    }
+    
+    if (!provisionerSuffixToValue.containsKey("entityAttributeValueCache3has")) {
+      return 3;
+    }
+    
+    throw new RuntimeException("Unable to find an available entity cache bucket");
+  }
 }

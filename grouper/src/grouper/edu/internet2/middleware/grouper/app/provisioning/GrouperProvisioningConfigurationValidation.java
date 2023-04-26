@@ -330,6 +330,8 @@ public class GrouperProvisioningConfigurationValidation {
   public void validateFromObjectModel() {
     validateOperateImpliesSelectOrInsert();
     validateMatchingAttributes();
+    validateMembershipAttributesAreNotCached();
+    validateMembershipAttributeDoesNotMatchSearchOrMatchingAttribute();
   }
 
   
@@ -577,6 +579,119 @@ public class GrouperProvisioningConfigurationValidation {
     }
     
   }
+  
+ public void validateMembershipAttributeDoesNotMatchSearchOrMatchingAttribute() {
+    
+    GrouperProvisioningConfiguration grouperProvisioningConfiguration = grouperProvisioner.retrieveGrouperProvisioningConfiguration();
+    
+    if (grouperProvisioningConfiguration.getGrouperProvisioningBehaviorMembershipType() == GrouperProvisioningBehaviorMembershipType.groupAttributes) {
+      
+      String groupMembershipAttributeName = grouperProvisioningConfiguration.getGroupMembershipAttributeName();
+      
+      if (StringUtils.isNotBlank(groupMembershipAttributeName)) {
+        
+        int groupMatchingAttributeCount = GrouperUtil.intValue(grouperProvisioningConfiguration.retrieveConfigInt("groupMatchingAttributeCount", false), 0);
+        for (int i=0;i<groupMatchingAttributeCount;i++) {
+          String configSuffix = "groupMatchingAttribute" + i + "name";
+          String matchingAttributeName = grouperProvisioningConfiguration.retrieveConfigString(configSuffix, false);
+          if (StringUtils.equals(groupMembershipAttributeName, matchingAttributeName)) {
+            this.addErrorMessage(new ProvisioningValidationIssue().assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.membershipAttributeCanNotBeMatchingAttribute"))
+                .assignJqueryHandle(configSuffix));
+            break;
+          }
+        }
+        
+        int groupSearchAttributeCount = GrouperUtil.intValue(grouperProvisioningConfiguration.retrieveConfigInt("groupSearchAttributeCount", false), 0);
+        for (int i=0;i<groupSearchAttributeCount;i++) {
+          String configSuffix = "groupSearchAttribute" + i + "name";
+          String searchAttributeName = grouperProvisioningConfiguration.retrieveConfigString(configSuffix, false);
+          if (StringUtils.equals(groupMembershipAttributeName, searchAttributeName)) {
+            this.addErrorMessage(new ProvisioningValidationIssue().assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.membershipAttributeCanNotBeSearchAttribute"))
+                .assignJqueryHandle(configSuffix));
+            break;
+          }
+        }
+      }
+      
+     
+    } else if (grouperProvisioningConfiguration.getGrouperProvisioningBehaviorMembershipType() == GrouperProvisioningBehaviorMembershipType.entityAttributes) {
+      
+      String entityMembershipAttributeName = grouperProvisioningConfiguration.getEntityMembershipAttributeName();
+      
+      if (StringUtils.isNotBlank(entityMembershipAttributeName)) {
+        
+        int entityMatchingAttributeCount = GrouperUtil.intValue(grouperProvisioningConfiguration.retrieveConfigInt("entityMatchingAttributeCount", false), 0);
+        for (int i=0;i<entityMatchingAttributeCount;i++) {
+          String configSuffix = "entityMatchingAttribute" + i + "name";
+          String matchingAttributeName = grouperProvisioningConfiguration.retrieveConfigString(configSuffix, false);
+          if (StringUtils.equals(entityMembershipAttributeName, matchingAttributeName)) {
+            this.addErrorMessage(new ProvisioningValidationIssue().assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.membershipAttributeCanNotBeMatchingAttribute"))
+                .assignJqueryHandle(configSuffix));
+            break;
+          }
+        }
+        
+        int entitySearchAttributeCount = GrouperUtil.intValue(grouperProvisioningConfiguration.retrieveConfigInt("entitySearchAttributeCount", false), 0);
+        for (int i=0;i<entitySearchAttributeCount;i++) {
+          String configSuffix = "entitySearchAttribute" + i + "name";
+          String searchAttributeName = grouperProvisioningConfiguration.retrieveConfigString(configSuffix, false);
+          if (StringUtils.equals(entityMembershipAttributeName, searchAttributeName)) {
+            this.addErrorMessage(new ProvisioningValidationIssue().assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.membershipAttributeCanNotBeSearchAttribute"))
+                .assignJqueryHandle(configSuffix));
+            break;
+          }
+        }
+        
+      }
+    }
+    
+  }
+  
+  public void validateMembershipAttributesAreNotCached() {
+    
+    GrouperProvisioningConfiguration grouperProvisioningConfiguration = grouperProvisioner.retrieveGrouperProvisioningConfiguration();
+    
+    if (grouperProvisioningConfiguration.getGrouperProvisioningBehaviorMembershipType() == GrouperProvisioningBehaviorMembershipType.groupAttributes) {
+      
+      String groupMembershipAttributeName = grouperProvisioningConfiguration.getGroupMembershipAttributeName();
+      
+      if (StringUtils.isNotBlank(groupMembershipAttributeName)) {
+        
+        for (GrouperProvisioningConfigurationAttributeDbCache configurationAttributeDbCache : GrouperUtil.nonNull(grouperProvisioningConfiguration.getGroupAttributeDbCaches(), GrouperProvisioningConfigurationAttributeDbCache.class)) {
+          
+          if (configurationAttributeDbCache != null) {
+            if (StringUtils.equals(groupMembershipAttributeName, configurationAttributeDbCache.getAttributeName())) {
+              this.addErrorMessage(new ProvisioningValidationIssue().assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.membershipAttributeCanNotBeCached"))
+                  .assignJqueryHandle("groupAttributeValueCache"+configurationAttributeDbCache.getIndex()+"groupAttribute"));
+            break;
+            }
+          }
+        }
+        
+      }
+      
+     
+    } else if (grouperProvisioningConfiguration.getGrouperProvisioningBehaviorMembershipType() == GrouperProvisioningBehaviorMembershipType.entityAttributes) {
+      
+      String entityMembershipAttributeName = grouperProvisioningConfiguration.getEntityMembershipAttributeName();
+      
+      if (StringUtils.isNotBlank(entityMembershipAttributeName)) {
+        
+        for (GrouperProvisioningConfigurationAttributeDbCache configurationAttributeDbCache : GrouperUtil.nonNull(grouperProvisioningConfiguration.getEntityAttributeDbCaches(), GrouperProvisioningConfigurationAttributeDbCache.class)) {
+          
+          if (configurationAttributeDbCache != null) {
+            if (StringUtils.equals(entityMembershipAttributeName, configurationAttributeDbCache.getAttributeName())) {
+              this.addErrorMessage(new ProvisioningValidationIssue().assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.membershipAttributeCanNotBeCached"))
+                    .assignJqueryHandle("entityAttributeValueCache"+configurationAttributeDbCache.getIndex()+"entityAttribute"));
+              break;
+            }
+          }
+        }
+        
+      }
+    }
+    
+  }
 
 
   public void validateDoingSomething() {
@@ -601,12 +716,26 @@ public class GrouperProvisioningConfigurationValidation {
     
     if (!StringUtils.isBlank(groupIdOfUsersToProvision)) {
        if (null == GroupFinder.findByUuid(GrouperSession.staticGrouperSession(), groupIdOfUsersToProvision, false)) {
-         this.addErrorMessage(new ProvisioningValidationIssue()
+         if (null == GroupFinder.findByName(GrouperSession.staticGrouperSession(), groupIdOfUsersToProvision, false)) {
+           this.addErrorMessage(new ProvisioningValidationIssue()
              .assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.groupIdOfUsersToProvisionNotExist"))
              .assignJqueryHandle("groupIdOfUsersToProvision"));
-       }
-    
+         }
+       }    
     }
+
+    String groupIdOfUsersNotToProvision = suffixToConfigValue.get("groupIdOfUsersNotToProvision");
+    
+    if (!StringUtils.isBlank(groupIdOfUsersNotToProvision)) {
+       if (null == GroupFinder.findByUuid(GrouperSession.staticGrouperSession(), groupIdOfUsersNotToProvision, false)) {
+         if (null == GroupFinder.findByName(GrouperSession.staticGrouperSession(), groupIdOfUsersNotToProvision, false)) {
+           this.addErrorMessage(new ProvisioningValidationIssue()
+             .assignMessage(GrouperTextContainer.textOrNull("provisioning.configuration.validation.groupIdOfUsersNotToProvisionNotExist"))
+             .assignJqueryHandle("groupIdOfUsersNotToProvision"));
+         }
+       }    
+    }
+
   }
 
   /**

@@ -20,6 +20,44 @@ import edu.internet2.middleware.grouperClient.jdbc.tableSync.GcGrouperSyncMember
 
 public class GrouperProvisioningCompare {
 
+  /**
+   * convert an attribute value to lower case if case insensitive
+   * @param attributeName
+   * @param attributeValue
+   * @return
+   */
+  public String attributeValueForCompareEntity(String attributeName, Object attributeValue) {
+    if (attributeValue == null) {
+      return null;
+    }
+    String attributeValueString = GrouperUtil.stringValue(attributeValue);
+    GrouperProvisioningConfigurationAttribute grouperProvisioningConfigurationAttribute = this.getGrouperProvisioner()
+        .retrieveGrouperProvisioningConfiguration().getTargetEntityAttributeNameToConfig().get(attributeName);
+    if (grouperProvisioningConfigurationAttribute != null && !grouperProvisioningConfigurationAttribute.isCaseSensitiveCompare()) {
+      return attributeValueString.toLowerCase();
+    }
+    return attributeValueString;
+  }
+  
+  /**
+   * convert an attribute value to lower case if case insensitive
+   * @param attributeName
+   * @param attributeValue
+   * @return
+   */
+  public String attributeValueForCompareGroup(String attributeName, Object attributeValue) {
+    if (attributeValue == null) {
+      return null;
+    }
+    String attributeValueString = GrouperUtil.stringValue(attributeValue);
+    GrouperProvisioningConfigurationAttribute grouperProvisioningConfigurationAttribute = this.getGrouperProvisioner()
+        .retrieveGrouperProvisioningConfiguration().getTargetGroupAttributeNameToConfig().get(attributeName);
+    if (grouperProvisioningConfigurationAttribute != null && !grouperProvisioningConfigurationAttribute.isCaseSensitiveCompare()) {
+      return attributeValueString.toLowerCase();
+    }
+    return attributeValueString;
+  }
+  
   private GrouperProvisioner grouperProvisioner = null;
 
   private int membershipAddCount = 0;
@@ -553,38 +591,40 @@ public class GrouperProvisioningCompare {
       }
     } else {
 
+      GrouperProvisioningConfigurationAttribute grouperProvisioningConfigurationAttribute = null;
+      if (grouperProvisioningUpdatable instanceof ProvisioningGroup) {
+        grouperProvisioningConfigurationAttribute = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getTargetGroupAttributeNameToConfig().get(attributeForMemberships);
+      } else if (grouperProvisioningUpdatable instanceof ProvisioningEntity) {
+        grouperProvisioningConfigurationAttribute = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getTargetEntityAttributeNameToConfig().get(attributeForMemberships);
+      }
+
+      boolean multiValued = grouperProvisioningConfigurationAttribute.isMultiValued();
+      
       // update
       Collection<Object> targetCollection = null;
-      if (targetValue != null) {
-        if (targetValue instanceof Collection) {
-          targetCollection = (Collection)targetValue;
-        }
-      }
       Collection<Object> grouperCollection = null;
-      if (grouperValue != null) {
-        if (grouperValue instanceof Collection) {
-          grouperCollection = new HashSet<Object>((Collection)grouperValue);
-        }
-      }
-      
-      if (grouperCollection != null) {
-        Iterator<Object> iterator = grouperCollection.iterator();
-        while (iterator.hasNext()) {
-          Object value = iterator.next();
-          value = filterDeletedMemberships(grouperAttribute, value);
-          
-          if (filterNonRecalcMemberships(grouperAttribute, value, recalcProvisioningUpdateable)) {
-            continue;
-          }
-          
-          if (value == null) {
-            iterator.remove();
-          }
-        }
-      }
       
       // scalar
-      if (grouperCollection == null && targetCollection == null) {
+      if (!multiValued) {
+        if (grouperValue != null) {
+          grouperValue = filterDeletedMemberships(grouperAttribute, grouperValue);
+          
+          if (filterNonRecalcMemberships(grouperAttribute, grouperValue, recalcProvisioningUpdateable)) {
+            grouperValue = null;
+          }
+
+        }
+        
+        //see if grouper needs a default
+        if (grouperValue == null && !StringUtils.isBlank(grouperProvisioningConfigurationAttribute.getDefaultValue())) {
+            
+          String defaultMassagedValue = grouperProvisioningConfigurationAttribute.getDefaultValue();
+          if (StringUtils.equals(grouperProvisioningConfigurationAttribute.getDefaultValue(), "<emptyString>")) {
+            defaultMassagedValue = "";
+          }
+          
+          grouperValue = grouperProvisioningConfigurationAttribute.getValueType().convert(defaultMassagedValue);
+        }
         if (!attributeValueEquals(attributeName, grouperValue, targetValue, grouperProvisioningUpdatable)) {
           if (grouperProvisioningUpdatable.canUpdateAttribute(attributeName)) {
 
@@ -610,19 +650,51 @@ public class GrouperProvisioningCompare {
         }
         return;
       }
-
-      if (grouperCollection == null) {
-        grouperCollection = new HashSet<Object>();
-        if (grouperValue != null) {
-          grouperCollection.add(grouperValue);
-        }
-      }
-      if (targetCollection == null) {
-        targetCollection = new HashSet<Object>();
+      // multi-valued
+      
+      if (targetValue instanceof Collection) {
+        targetCollection = (Collection)targetValue;
+      } else if (targetCollection == null) {
+        targetCollection = new HashSet<>();
         if (targetValue != null) {
           targetCollection.add(targetValue);
         }
       }
+      if (grouperValue instanceof Collection) {
+        grouperCollection = new HashSet<Object>((Collection)grouperValue);
+      } else if (grouperCollection == null) {
+        grouperCollection = new HashSet<>();
+        if (grouperValue != null) {
+          grouperCollection.add(grouperValue);
+        }
+      }
+
+      if (GrouperUtil.length(grouperCollection) > 0) {
+        Iterator<Object> iterator = grouperCollection.iterator();
+        while (iterator.hasNext()) {
+          Object value = iterator.next();
+          value = filterDeletedMemberships(grouperAttribute, value);
+          
+          if (filterNonRecalcMemberships(grouperAttribute, value, recalcProvisioningUpdateable)) {
+            continue;
+          }
+          
+          if (value == null) {
+            iterator.remove();
+          }
+        }
+      }
+      if (GrouperUtil.length(grouperCollection) == 0 && !StringUtils.isBlank(grouperProvisioningConfigurationAttribute.getDefaultValue())) {
+        
+        String defaultMassagedValue = grouperProvisioningConfigurationAttribute.getDefaultValue();
+        if (StringUtils.equals(grouperProvisioningConfigurationAttribute.getDefaultValue(), "<emptyString>")) {
+          defaultMassagedValue = "";
+        }
+        
+        grouperCollection.add(grouperProvisioningConfigurationAttribute.getValueType().convert(defaultMassagedValue));
+        
+      }
+      
 
       Collection inserts = new HashSet<Object>(grouperCollection);
       inserts.removeAll(targetCollection);
@@ -690,6 +762,11 @@ public class GrouperProvisioningCompare {
     if (grouperProvisioningUpdatable instanceof ProvisioningGroup 
         && !((ProvisioningGroup)grouperProvisioningUpdatable).getProvisioningGroupWrapper().getProvisioningStateGroup().isUpdate()
         && !((ProvisioningGroup)grouperProvisioningUpdatable).getProvisioningGroupWrapper().getProvisioningStateGroup().isRecalcObject()) {
+      return;
+    }
+    if (grouperProvisioningUpdatable instanceof ProvisioningEntity
+        && !((ProvisioningEntity)grouperProvisioningUpdatable).getProvisioningEntityWrapper().getProvisioningStateEntity().isUpdate()
+        && !((ProvisioningEntity)grouperProvisioningUpdatable).getProvisioningEntityWrapper().getProvisioningStateEntity().isRecalcObject()) {
       return;
     }
     
@@ -977,7 +1054,8 @@ public class GrouperProvisioningCompare {
 
       if (!provisioningEntityWrapper.getProvisioningStateEntity().isDelete()) {
         
-        if (provisioningEntityWrapper.getGcGrouperSyncMember() != null && provisioningEntityWrapper.getGcGrouperSyncMember().isProvisionable() && !provisioningEntityWrapper.getGcGrouperSyncMember().isInTarget()) {
+        if (provisioningEntityWrapper.getGcGrouperSyncMember() != null && provisioningEntityWrapper.getGcGrouperSyncMember().isProvisionable() && 
+            (provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget() == null || !provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget())) {
         
           if (provisioningEntityWrapper.getProvisioningStateEntity().isSelectResultProcessed()) {
           
@@ -994,7 +1072,7 @@ public class GrouperProvisioningCompare {
           }
         }
         if (provisioningEntityWrapper.getGcGrouperSyncMember() != null && provisioningEntityWrapper.getGcGrouperSyncMember().isProvisionable() 
-            && provisioningEntityWrapper.getGcGrouperSyncMember().isInTarget() 
+            && provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget() != null &&  provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget()
             // if its entity attributes there could be memberships
             && this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().getGrouperProvisioningBehaviorMembershipType() != GrouperProvisioningBehaviorMembershipType.entityAttributes
             && provisioningEntityWrapper.getProvisioningStateEntity().isCreate()) {
@@ -1043,7 +1121,7 @@ public class GrouperProvisioningCompare {
               && provisioningEntityWrapper.getGrouperTargetEntity() != null) {
             String attributeForMemberships = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getAttributeNameForMemberships();
             
-            Set<?> attributeValueSet = provisioningEntityWrapper.getGrouperTargetEntity().retrieveAttributeValueSet(attributeForMemberships);
+            Set<?> attributeValueSet = provisioningEntityWrapper.getGrouperTargetEntity().retrieveAttributeValueSetForMemberships();
             ProvisioningAttribute provisioningAttribute = provisioningEntityWrapper.getGrouperTargetEntity().getAttributes().get(attributeForMemberships);
             boolean deleted = false;
             for (Object obj: GrouperUtil.nonNull(attributeValueSet)) {
@@ -1063,6 +1141,8 @@ public class GrouperProvisioningCompare {
                 if (!deleted) {
                   deleted = true;
                   provisioningEntityWrappersForUpdate.add(provisioningEntityWrapper);
+                  //this isnt a delete, its an update!
+                  provisioningEntityWrapper.getProvisioningStateEntity().setDelete(false);
                 }
               }
               
@@ -1118,11 +1198,10 @@ public class GrouperProvisioningCompare {
         
         ProvisioningEntity entityToDelete = null;
         
-        if (!provisioningEntityWrapper.getProvisioningStateEntity().isSelectResultProcessed() && provisioningEntityWrapper.getProvisioningStateEntity().isDelete() && provisioningEntityWrapper.getGrouperTargetEntity() != null 
-            && provisioningEntityWrapper.getGcGrouperSyncMember().isInTarget()) {
-          entityToDelete = provisioningEntityWrapper.getGrouperTargetEntity();
-        } else {
+        if (provisioningEntityWrapper.getTargetProvisioningEntity() != null) {
           entityToDelete = provisioningEntityWrapper.getTargetProvisioningEntity();
+        } else {
+          entityToDelete = provisioningEntityWrapper.getGrouperTargetEntity();
         }
         
         if (entityToDelete == null) {
@@ -1137,7 +1216,8 @@ public class GrouperProvisioningCompare {
         
         if (this.grouperProvisioner.retrieveGrouperProvisioningBehavior().isDeleteEntitiesIfGrouperDeleted()) {
           
-          if (provisioningEntityWrapper.getGcGrouperSyncMember() != null && provisioningEntityWrapper.getGcGrouperSyncMember().isInTarget()) {
+          if (provisioningEntityWrapper.getGcGrouperSyncMember() != null 
+              && provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget() != null && provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget()) {
             shouldDelete = true;
           }
           
@@ -1146,7 +1226,7 @@ public class GrouperProvisioningCompare {
         if (this.grouperProvisioner.retrieveGrouperProvisioningBehavior().isDeleteEntitiesIfGrouperCreated()) {
           
           if (provisioningEntityWrapper.getGcGrouperSyncMember() != null && provisioningEntityWrapper.getGcGrouperSyncMember().isInTargetInsertOrExists() 
-                && provisioningEntityWrapper.getGcGrouperSyncMember().isInTarget()) {
+              && provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget() != null && provisioningEntityWrapper.getGcGrouperSyncMember().getInTarget()) {
             shouldDelete = true;
           }
           
@@ -1173,7 +1253,7 @@ public class GrouperProvisioningCompare {
     if (behaviorIsUpdateEntities) {
       
       for (ProvisioningEntityWrapper provisioningEntityWrapper : provisioningEntityWrappersForUpdate) {
-        
+        //TODO check if delete...  but not deleting...
         ProvisioningEntity grouperTargetEntity = provisioningEntityWrapper.getGrouperTargetEntity();
         ProvisioningEntity targetProvisioningEntity = provisioningEntityWrapper.getTargetProvisioningEntity();
 
@@ -1222,7 +1302,8 @@ public class GrouperProvisioningCompare {
 
       if (!provisioningGroupWrapper.getProvisioningStateGroup().isDelete()) {
         
-        if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().isProvisionable() && !provisioningGroupWrapper.getGcGrouperSyncGroup().isInTarget()) {
+        if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().isProvisionable() 
+            && (provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget() == null || !provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget())) {
         
           if (provisioningGroupWrapper.getProvisioningStateGroup().isSelectResultProcessed()) {
           
@@ -1235,7 +1316,7 @@ public class GrouperProvisioningCompare {
         }
         
         if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().isProvisionable() 
-            && provisioningGroupWrapper.getGcGrouperSyncGroup().isInTarget()
+            && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget()
             && provisioningGroupWrapper.getProvisioningStateGroup().isCreate()
             // if its group attributes there could be memberships
             && this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().getGrouperProvisioningBehaviorMembershipType() != GrouperProvisioningBehaviorMembershipType.groupAttributes ) {
@@ -1281,7 +1362,7 @@ public class GrouperProvisioningCompare {
               && provisioningGroupWrapper.getGrouperTargetGroup() != null) {
             String attributeForMemberships = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getAttributeNameForMemberships();
             
-            Set<?> attributeValueSet = provisioningGroupWrapper.getGrouperTargetGroup().retrieveAttributeValueSet(attributeForMemberships);
+            Set<?> attributeValueSet = provisioningGroupWrapper.getGrouperTargetGroup().retrieveAttributeValueSetForMemberships();
             ProvisioningAttribute provisioningAttribute = provisioningGroupWrapper.getGrouperTargetGroup().getAttributes().get(attributeForMemberships);
             boolean deleted = false;
             for (Object obj: GrouperUtil.nonNull(attributeValueSet)) {
@@ -1303,6 +1384,8 @@ public class GrouperProvisioningCompare {
                 if (!deleted) {
                   deleted = true;
                   provisioningGroupWrappersForUpdate.add(provisioningGroupWrapper);
+                  //this isnt a delete, its an update!
+                  provisioningGroupWrapper.getProvisioningStateGroup().setDelete(false);
                 }
               }
               
@@ -1310,7 +1393,8 @@ public class GrouperProvisioningCompare {
           }
 
         }
-      } else if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().isInTarget()
+      } else if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null 
+          && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget()
           && provisioningGroupWrapper.getProvisioningStateGroup().isDelete() && provisioningGroupWrapper.getErrorCode() == GcGrouperSyncErrorCode.MEM) {
         provisioningGroupWrappersForDelete.add(provisioningGroupWrapper);
         continue;
@@ -1360,11 +1444,10 @@ public class GrouperProvisioningCompare {
         
         ProvisioningGroup groupToDelete = null;
         
-        if (!provisioningGroupWrapper.getProvisioningStateGroup().isSelectResultProcessed() && provisioningGroupWrapper.getProvisioningStateGroup().isDelete() && provisioningGroupWrapper.getGrouperTargetGroup() != null 
-            && provisioningGroupWrapper.getGcGrouperSyncGroup().isInTarget()) {
-          groupToDelete = provisioningGroupWrapper.getGrouperTargetGroup();
-        } else {
+        if (provisioningGroupWrapper.getTargetProvisioningGroup() != null) {
           groupToDelete = provisioningGroupWrapper.getTargetProvisioningGroup();
+        } else {
+          groupToDelete = provisioningGroupWrapper.getGrouperTargetGroup();
         }
         
         if (groupToDelete == null) {
@@ -1379,7 +1462,8 @@ public class GrouperProvisioningCompare {
         
         if (this.grouperProvisioner.retrieveGrouperProvisioningBehavior().isDeleteGroupsIfGrouperDeleted()) {
           
-          if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().isInTarget()) {
+          if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null 
+              && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget()) {
             shouldDelete = true;
           }
           
@@ -1388,7 +1472,7 @@ public class GrouperProvisioningCompare {
         if (this.grouperProvisioner.retrieveGrouperProvisioningBehavior().isDeleteGroupsIfGrouperCreated()) {
           
           if (provisioningGroupWrapper.getGcGrouperSyncGroup() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().isInTargetInsertOrExists() 
-                && provisioningGroupWrapper.getGcGrouperSyncGroup().isInTarget()) {
+              && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget() != null && provisioningGroupWrapper.getGcGrouperSyncGroup().getInTarget()) {
             shouldDelete = true;
           }
           
@@ -1849,9 +1933,17 @@ public class GrouperProvisioningCompare {
       return;
     }
     
+    String defaultMassagedValue = attribute.getDefaultValue();
+    if (StringUtils.equals(attribute.getDefaultValue(), "<emptyString>")) {
+      defaultMassagedValue = "";
+    }
+
     for (ProvisioningGroup grouperTargetGroupForUpdate : grouperTargetGroupsForUpdate) {
       
       boolean hasMembershipInsert = false;
+      boolean hasMembershipInsertNonDefault = false;
+      boolean hasMembershipDeleteDefault = false;
+
       int countMembershipDelete = 0;
       
       
@@ -1863,12 +1955,39 @@ public class GrouperProvisioningCompare {
         
         if (provisioningObjectChange.getProvisioningObjectChangeAction() == ProvisioningObjectChangeAction.insert) {
           hasMembershipInsert = true;
+          
+          if (!StringUtils.equals(defaultMassagedValue, GrouperUtil.stringValue(provisioningObjectChange.getNewValue()))) {
+            hasMembershipInsertNonDefault = true;
+          }
+          
         }
         
         if (provisioningObjectChange.getProvisioningObjectChangeAction() == ProvisioningObjectChangeAction.delete) {
           countMembershipDelete++;
+          
+          if (StringUtils.equals(defaultMassagedValue, GrouperUtil.stringValue(provisioningObjectChange.getOldValue()))) {
+            hasMembershipDeleteDefault = true;
+          }
+          
         }
         
+      }
+      
+      if (!hasMembershipInsertNonDefault && hasMembershipDeleteDefault) {
+        Iterator<ProvisioningObjectChange> iterator = grouperTargetGroupForUpdate.getInternal_objectChanges().iterator();
+        while (iterator.hasNext()) {
+          ProvisioningObjectChange provisioningObjectChange = iterator.next();
+          if (!StringUtils.equals(attributeForMemberships, provisioningObjectChange.getAttributeName())) {
+            continue;
+          }
+          // remove inserts and deletes with membership and default value
+          if ((provisioningObjectChange.getProvisioningObjectChangeAction() == ProvisioningObjectChangeAction.insert
+              && StringUtils.equals(defaultMassagedValue, GrouperUtil.stringValue(provisioningObjectChange.getNewValue())))
+              || (provisioningObjectChange.getProvisioningObjectChangeAction() == ProvisioningObjectChangeAction.delete
+                  && StringUtils.equals(defaultMassagedValue, GrouperUtil.stringValue(provisioningObjectChange.getOldValue())))) {
+            iterator.remove();
+          }
+        }
       }
       
       if (countMembershipDelete == 0 || hasMembershipInsert == true) {

@@ -363,7 +363,7 @@ public class GrouperAwsProvisionerTest extends GrouperProvisioningBaseTest {
       assertNull(gcGrouperSyncMember.getEntityAttributeValueCache1());
       assertNotNull(gcGrouperSyncMember.getEntityAttributeValueCache2());
       assertNull(gcGrouperSyncMember.getEntityAttributeValueCache3());
-      assertNull(gcGrouperSyncMember.getLastUserMetadataSync());
+      assertNotNull(gcGrouperSyncMember.getLastUserMetadataSync());
       assertNull(gcGrouperSyncMember.getErrorMessage());
       assertNull(gcGrouperSyncMember.getErrorTimestamp());
       assertNull(gcGrouperSyncMember.getLastUserSync());
@@ -465,7 +465,7 @@ public class GrouperAwsProvisionerTest extends GrouperProvisioningBaseTest {
       assertNull(gcGrouperSyncMember.getEntityAttributeValueCache1());
       assertNotNull(gcGrouperSyncMember.getEntityAttributeValueCache2());
       assertNull(gcGrouperSyncMember.getEntityAttributeValueCache3());
-      assertNull(gcGrouperSyncMember.getLastUserMetadataSync());
+      assertNotNull(gcGrouperSyncMember.getLastUserMetadataSync());
       assertNull(gcGrouperSyncMember.getErrorMessage());
       assertNull(gcGrouperSyncMember.getErrorTimestamp());
       assertNull(gcGrouperSyncMember.getLastUserSync());
@@ -485,7 +485,7 @@ public class GrouperAwsProvisionerTest extends GrouperProvisioningBaseTest {
       assertNull(gcGrouperSyncMember.getEntityAttributeValueCache1());
       assertNotNull(gcGrouperSyncMember.getEntityAttributeValueCache2());
       assertNull(gcGrouperSyncMember.getEntityAttributeValueCache3());
-      assertNull(gcGrouperSyncMember.getLastUserMetadataSync());
+      assertNotNull(gcGrouperSyncMember.getLastUserMetadataSync());
       assertNull(gcGrouperSyncMember.getErrorMessage());
       assertNull(gcGrouperSyncMember.getErrorTimestamp());
       assertNull(gcGrouperSyncMember.getLastUserSync());
@@ -646,7 +646,7 @@ public class GrouperAwsProvisionerTest extends GrouperProvisioningBaseTest {
       assertNull(gcGrouperSyncGroup.getGroupAttributeValueCache0());
       assertNull(gcGrouperSyncGroup.getGroupAttributeValueCache1());
       assertNull(gcGrouperSyncGroup.getGroupAttributeValueCache3());
-      assertNull(gcGrouperSyncGroup.getLastGroupMetadataSync());
+      assertNotNull(gcGrouperSyncGroup.getLastGroupMetadataSync());
       assertNull(gcGrouperSyncGroup.getErrorMessage());
       assertNull(gcGrouperSyncGroup.getErrorTimestamp());
       assertNull(gcGrouperSyncGroup.getLastGroupSync());

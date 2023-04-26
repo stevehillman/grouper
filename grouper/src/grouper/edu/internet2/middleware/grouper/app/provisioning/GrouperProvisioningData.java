@@ -163,6 +163,40 @@ public class GrouperProvisioningData {
   
   /**
    * 
+   * @param provisioningEntityWrapper
+   */
+  public void removeAndUnindexEntityWrapper(ProvisioningEntityWrapper provisioningEntityWrapper) {
+    this.provisioningEntityWrappers.remove(provisioningEntityWrapper);
+    GcGrouperSyncMember gcGrouperSyncMember = provisioningEntityWrapper.getGcGrouperSyncMember();
+    
+    if (StringUtils.isNotBlank(provisioningEntityWrapper.getMemberId())) {
+      this.getGrouperProvisioner().retrieveGrouperProvisioningDataIndex().getMemberUuidToProvisioningEntityWrapper().remove(provisioningEntityWrapper.getMemberId());
+    }
+    
+    if (gcGrouperSyncMember != null) {
+      this.getGrouperProvisioner().retrieveGrouperProvisioningDataIndex().getGrouperSyncMemberIdToProvisioningEntityWrapper().remove(gcGrouperSyncMember.getId());
+    }    
+  }
+  
+  /**
+   * 
+   * @param provisioningGroupWrapper
+   */
+  public void removeAndUnindexGroupWrapper(ProvisioningGroupWrapper provisioningGroupWrapper) {
+    this.provisioningGroupWrappers.remove(provisioningGroupWrapper);
+    GcGrouperSyncGroup gcGrouperSyncGroup = provisioningGroupWrapper.getGcGrouperSyncGroup();
+    
+    if (StringUtils.isNotBlank(provisioningGroupWrapper.getGroupId())) {
+      this.getGrouperProvisioner().retrieveGrouperProvisioningDataIndex().getGroupUuidToProvisioningGroupWrapper().remove(provisioningGroupWrapper.getGroupId());
+    }
+    
+    if (gcGrouperSyncGroup != null) {
+      this.getGrouperProvisioner().retrieveGrouperProvisioningDataIndex().getGrouperSyncGroupIdToProvisioningGroupWrapper().remove(gcGrouperSyncGroup.getId());
+    }    
+  }
+  
+  /**
+   * 
    * @param provisioningMembershipWrapper
    */
   public void addAndIndexMembershipWrapper(ProvisioningMembershipWrapper provisioningMembershipWrapper) {
@@ -584,15 +618,33 @@ public class GrouperProvisioningData {
     }
 
     if (recalcGroup) {
-      provisioningGroupWrapper.getProvisioningStateGroup().setRecalcObject(true);
+      provisioningGroupWrapper.getProvisioningStateGroup().setRecalcObject(recalcGroup);
     }
 
     if (recalcMemberships) {
-      provisioningGroupWrapper.getProvisioningStateGroup().setRecalcGroupMemberships(true);
+      provisioningGroupWrapper.getProvisioningStateGroup().setRecalcGroupMemberships(recalcMemberships);
     }
 
     if (grouperIncrementalDataAction != null) {
       provisioningGroupWrapper.getProvisioningStateGroup().setGrouperIncrementalDataAction(grouperIncrementalDataAction);
+      switch (grouperIncrementalDataAction) {
+        case insert:
+          
+          provisioningGroupWrapper.getProvisioningStateGroup().setCreate(true);
+          break;
+          
+        case delete:
+          
+          provisioningGroupWrapper.getProvisioningStateGroup().setDelete(true);
+          break;
+
+        case update:
+          
+          provisioningGroupWrapper.getProvisioningStateGroup().setUpdate(true);
+          break;
+        default:
+          break;
+      }
     }
   }
 
@@ -615,11 +667,11 @@ public class GrouperProvisioningData {
     }
 
     if (recalcEntity) {
-      provisioningEntityWrapper.getProvisioningStateEntity().setRecalcObject(true);
+      provisioningEntityWrapper.getProvisioningStateEntity().setRecalcObject(recalcEntity);
     }
 
     if (recalcMemberships) {
-      provisioningEntityWrapper.getProvisioningStateEntity().setRecalcEntityMemberships(true);
+      provisioningEntityWrapper.getProvisioningStateEntity().setRecalcEntityMemberships(recalcMemberships);
     }
     
     if (grouperIncrementalDataAction != null) {
@@ -648,13 +700,30 @@ public class GrouperProvisioningData {
     }
 
     if (recalcMembership) {
-      provisioningMembershipWrapper.getProvisioningStateMembership().setRecalcObject(true);
+      provisioningMembershipWrapper.getProvisioningStateMembership().setRecalcObject(recalcMembership);
     }
     
     if (grouperIncrementalDataAction != null) {
       provisioningMembershipWrapper.getProvisioningStateMembership().setGrouperIncrementalDataAction(grouperIncrementalDataAction);
     }
 
+  }
+
+  /**
+   * 
+   * @param provisioningMembershipWrapper
+   */
+  public void removeAndUnindexMembershipWrapper(ProvisioningMembershipWrapper provisioningMembershipWrapper) {
+    this.provisioningMembershipWrappers.remove(provisioningMembershipWrapper);
+    GcGrouperSyncMembership gcGrouperSyncMembership = provisioningMembershipWrapper.getGcGrouperSyncMembership();
+    
+    if (provisioningMembershipWrapper.getGroupIdMemberId() != null) {
+      this.getGrouperProvisioner().retrieveGrouperProvisioningDataIndex().getGroupUuidMemberUuidToProvisioningMembershipWrapper().remove(provisioningMembershipWrapper.getGroupIdMemberId());
+    }
+    
+    if (gcGrouperSyncMembership != null) {
+      this.getGrouperProvisioner().retrieveGrouperProvisioningDataIndex().getGrouperSyncGroupIdGrouperSyncMemberIdToProvisioningMembershipWrapper().remove(provisioningMembershipWrapper.getSyncGroupIdSyncMemberId());
+    }    
   }
 
 

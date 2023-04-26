@@ -25,7 +25,7 @@
     <description>Internet2 Groups Management Toolkit - Parent Project</description>
     <groupId>edu.internet2.middleware.grouper</groupId>
     <artifactId>grouper-parent</artifactId>
-    <version>2.6.0-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -37,10 +37,6 @@
         <module>../grouper-ui</module>
         <module>../grouper-ws</module>
         <module>../grouper-misc/grouper-installer</module>
-        <module>../grouper-misc/grouperActivemq</module>
-        <module>../grouper-misc/grouper-messaging-rabbitmq</module>
-        <module>../grouper-misc/grouper-messaging-aws</module>
-        <module>../grouper-misc/grouper-messaging-activemq</module>
         <module>../grouper-misc/grouper-pspng</module>
         <module>../grouper-misc/grouper-box</module>
         <module>../grouper-misc/grouper-duo</module>
@@ -131,7 +127,7 @@
         <commons.validator.version>1.6</commons.validator.version>
         <commons.csv.version>1.6</commons.csv.version>
         <cron.parser.core.version>3.4</cron.parser.core.version>
-        <dom4j.version>2.1.3</dom4j.version>
+        <dom4j.version>2.1.4</dom4j.version>
         <shibboleth.common.version>1.3.3</shibboleth.common.version>
         <javassist.version>3.22.0-GA</javassist.version>
         <smack.version>3.1.0</smack.version>
@@ -146,7 +142,7 @@
         <apacheds.protocol.ldap.version>1.5.5</apacheds.protocol.ldap.version>
         <shared.ldap.version>0.9.15</shared.ldap.version>
         <bsh.version>2.0b5</bsh.version>
-        <jettison.version>1.5.3</jettison.version>
+        <jettison.version>1.5.4</jettison.version>
         <hibernate.core.version>5.6.10.Final</hibernate.core.version>
         <hibernate.ehcache.version>5.6.10.Final</hibernate.ehcache.version>
         <ehcache.version>2.6.10</ehcache.version>
@@ -174,7 +170,6 @@
         <postgresql.version>42.5.1</postgresql.version>
         <mysql.connector.java.version>8.0.28</mysql.connector.java.version>
         <ldaptive.version>1.2.4</ldaptive.version>
-        <xml.apis.version>1.4.01</xml.apis.version>
         <aws.java.sdk.core>1.12.267</aws.java.sdk.core>
         <aws.java.sdk.s3>1.12.267</aws.java.sdk.s3>
         <aws.java.sdk.sqs>1.12.267</aws.java.sdk.sqs>
@@ -182,6 +177,10 @@
         <httpclient>4.5.13</httpclient>
         <httpcore>4.4.14</httpcore>
         <httpmime>4.5.13</httpmime>
+        <geronimo-jms.version>1.1</geronimo-jms.version>
+        <qpid-jms-client.version>0.61.0</qpid-jms-client.version>
+        <amqp-client.version>4.12.0</amqp-client.version>
+        
         <!-- note, jackson version is also in grouper pom -->
         <jackson.annotations>2.14.0</jackson.annotations>
         <jackson.core>2.14.0</jackson.core>
@@ -191,7 +190,7 @@
         
         <!-- grouper-ui -->
         <csrfguard.version>4.1.4</csrfguard.version>
-        <commons.fileupload.version>1.4</commons.fileupload.version>
+        <commons.fileupload.version>1.5</commons.fileupload.version>
         <jstl.version>1.2.1</jstl.version>
         <taglibs.standard.version>1.1.2</taglibs.standard.version>
         <jsp.version>2.3.2-b02</jsp.version>
@@ -838,11 +837,6 @@
                 <version>${xmlpull.version}</version>
             </dependency>
             <dependency>
-                <groupId>xml-apis</groupId>
-                <artifactId>xml-apis</artifactId>
-                <version>${xml.apis.version}</version>
-            </dependency>
-            <dependency>
 		      <groupId>com.squareup.okhttp3</groupId>
 		      <artifactId>logging-interceptor</artifactId>
 		      <version>${okhttp.version}</version>
@@ -963,6 +957,24 @@
 		          <artifactId>java-ipv6</artifactId>
 		          <version>${java-ipv6.version}</version>
 		        </dependency>
+		        
+		        <dependency>
+              <groupId>org.apache.geronimo.specs</groupId>
+              <artifactId>geronimo-jms_1.1_spec</artifactId>
+              <version>${geronimo-jms.version}</version>
+            </dependency>
+            
+            <dependency>
+              <groupId>org.apache.qpid</groupId>
+              <artifactId>qpid-jms-client</artifactId>
+              <version>${qpid-jms-client.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>com.rabbitmq</groupId>
+                <artifactId>amqp-client</artifactId>
+                <version>${amqp-client.version}</version>
+            </dependency>
 
 
         </dependencies>

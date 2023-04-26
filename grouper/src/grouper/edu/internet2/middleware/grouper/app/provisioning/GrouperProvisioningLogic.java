@@ -252,7 +252,7 @@ public class GrouperProvisioningLogic {
     
     // at this point everything is a recalc and selected
     for (ProvisioningMembershipWrapper provisioningMembershipWrapper : GrouperUtil.nonNull(this.getGrouperProvisioner().retrieveGrouperProvisioningData().getProvisioningMembershipWrappers())) {
-      provisioningMembershipWrapper.getProvisioningStateMembership().setRecalcObject(true);
+      provisioningMembershipWrapper.getProvisioningStateMembership().setRecalcObject(this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectMembershipsForRecalc());
     }
 
     this.grouperProvisioner.retrieveGrouperProvisioningSyncDao().processResultsSelectGroupsFull(this.grouperProvisioner.retrieveGrouperProvisioningData().getProvisioningGroupWrappers());
@@ -308,12 +308,12 @@ public class GrouperProvisioningLogic {
       // count total for full sync
       int totalCount = 0;
       for (GcGrouperSyncGroup gcGrouperSyncGroup : GrouperUtil.nonNull(this.getGrouperProvisioner().getGcGrouperSync().getGcGrouperSyncGroupDao().groupRetrieveAll())) {
-        if (gcGrouperSyncGroup.isInTarget()) {
+        if (gcGrouperSyncGroup.getInTarget() != null && gcGrouperSyncGroup.getInTarget()) {
           totalCount++;
         }
       }
       for (GcGrouperSyncMember gcGrouperSyncMember : GrouperUtil.nonNull(this.getGrouperProvisioner().getGcGrouperSync().getGcGrouperSyncMemberDao().memberRetrieveAll())) {
-        if (gcGrouperSyncMember.isInTarget()) {
+        if (gcGrouperSyncMember.getInTarget() != null && gcGrouperSyncMember.getInTarget()) {
           totalCount++;
         }
       }
@@ -383,15 +383,17 @@ public class GrouperProvisioningLogic {
     
       // everything in a full sync is a recalc if it can be
       for (ProvisioningGroupWrapper provisioningGroupWrapper : GrouperUtil.nonNull(this.getGrouperProvisioner().retrieveGrouperProvisioningData().getProvisioningGroupWrappers())) {
-        provisioningGroupWrapper.getProvisioningStateGroup().setRecalcObject(true);
-        provisioningGroupWrapper.getProvisioningStateGroup().setRecalcGroupMemberships(true);
+        
+        provisioningGroupWrapper.getProvisioningStateGroup().setRecalcObject(this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectGroupsForRecalc());
+        provisioningGroupWrapper.getProvisioningStateGroup().setRecalcGroupMemberships(this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectGroupMembershipsForRecalc());
       }
     }
     
     if (this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().isSelectEntities()) {
       for (ProvisioningEntityWrapper provisioningEntityWrapper : GrouperUtil.nonNull(this.getGrouperProvisioner().retrieveGrouperProvisioningData().getProvisioningEntityWrappers())) {
-        provisioningEntityWrapper.getProvisioningStateEntity().setRecalcObject(true);
-        provisioningEntityWrapper.getProvisioningStateEntity().setRecalcEntityMemberships(true);
+        
+        provisioningEntityWrapper.getProvisioningStateEntity().setRecalcObject(this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectEntitiesForRecalc());
+        provisioningEntityWrapper.getProvisioningStateEntity().setRecalcEntityMemberships(this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectEntityMembershipsForRecalc());
       }
     }
   }
@@ -455,14 +457,14 @@ public class GrouperProvisioningLogic {
           == GrouperProvisioningBehaviorMembershipType.groupAttributes) {
 
         for (ProvisioningGroup provisioningGroup : GrouperUtil.nonNull(this.grouperProvisioner.retrieveGrouperProvisioningData().retrieveTargetProvisioningGroups())) {
-          originalTargetMembershipCount += GrouperUtil.length(provisioningGroup.retrieveAttributeValueSet(membershipAttribute));
+          originalTargetMembershipCount += GrouperUtil.length(provisioningGroup.retrieveAttributeValueSetForMemberships());
         }
       }
       if (GrouperProvisioningLogic.this.grouperProvisioner.retrieveGrouperProvisioningBehavior().getGrouperProvisioningBehaviorMembershipType() 
           == GrouperProvisioningBehaviorMembershipType.entityAttributes) {
 
         for (ProvisioningEntity provisioningEntity : GrouperUtil.nonNull(this.grouperProvisioner.retrieveGrouperProvisioningData().retrieveTargetProvisioningEntities())) {
-          originalTargetMembershipCount += GrouperUtil.length(provisioningEntity.retrieveAttributeValueSet(membershipAttribute));
+          originalTargetMembershipCount += GrouperUtil.length(provisioningEntity.retrieveAttributeValueSetForMemberships());
         }
       }
     }
@@ -957,6 +959,8 @@ public class GrouperProvisioningLogic {
             this.getGrouperProvisioner().retrieveGrouperProvisioningObjectLog().debug(GrouperProvisioningObjectLogType.retrieveTargetDataGroupsAndEntities);
           }
 
+          grouperProvisioningLogicIncremental.calculateGroupAction();
+          
           // ######### STEP 30: create groups / entities
           debugMap.put("state", "insertGroups");
           createMissingGroupsFull();
@@ -1061,7 +1065,7 @@ public class GrouperProvisioningLogic {
           // ######### Mark memberships retrieved by group or entity as recalc
           for (ProvisioningMembershipWrapper provisioningMembershipWrapper : this.grouperProvisioner.retrieveGrouperProvisioningData().getProvisioningMembershipWrappers()) {
             if (provisioningMembershipWrapper.getTargetProvisioningMembership() != null) {
-              provisioningMembershipWrapper.getProvisioningStateMembership().setRecalcObject(true);
+              provisioningMembershipWrapper.getProvisioningStateMembership().setRecalcObject(this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectMembershipsForRecalc());
             }
           }
           
@@ -1264,6 +1268,18 @@ public class GrouperProvisioningLogic {
       if (gcGrouperSyncGroup == null) {
         continue;
       }
+      
+      if (exception != null && gcGrouperSyncGroup.getErrorCode() == null) {
+        gcGrouperSyncGroup.setErrorCode(GcGrouperSyncErrorCode.ERR);
+        gcGrouperSyncGroup.setErrorMessage(GrouperUtil.getFullStackTrace(exception));
+        gcGrouperSyncGroup.setErrorTimestamp(new Timestamp(System.currentTimeMillis()));
+      }
+      
+      if (gcGrouperSyncGroup.getErrorCode() == null && provisioningGroupWrapper.getErrorCode() != null) {
+        gcGrouperSyncGroup.setErrorCode(provisioningGroupWrapper.getErrorCode());
+        gcGrouperSyncGroup.setErrorTimestamp(new Timestamp(System.currentTimeMillis()));
+      }
+      
       if (gcGrouperSyncGroup.getErrorCode() == null) {
         continue;
       }
@@ -1277,6 +1293,16 @@ public class GrouperProvisioningLogic {
       if (gcGrouperSyncMember == null) {
         continue;
       }
+      if (exception != null && gcGrouperSyncMember.getErrorCode() == null) {
+        gcGrouperSyncMember.setErrorCode(GcGrouperSyncErrorCode.ERR);
+        gcGrouperSyncMember.setErrorMessage(GrouperUtil.getFullStackTrace(exception));
+        gcGrouperSyncMember.setErrorTimestamp(new Timestamp(System.currentTimeMillis()));
+      }
+      
+      if (gcGrouperSyncMember.getErrorCode() == null && provisioningEntityWrapper.getErrorCode() != null) {
+        gcGrouperSyncMember.setErrorCode(provisioningEntityWrapper.getErrorCode());
+        gcGrouperSyncMember.setErrorTimestamp(new Timestamp(System.currentTimeMillis()));
+      }
       if (gcGrouperSyncMember.getErrorCode() == null) {
         continue;
       }
@@ -1289,6 +1315,16 @@ public class GrouperProvisioningLogic {
       GcGrouperSyncMembership gcGrouperSyncMembership = provisioningMembershipWrapper.getGcGrouperSyncMembership();
       if (gcGrouperSyncMembership == null) {
         continue;
+      }
+      if (exception != null && gcGrouperSyncMembership.getErrorCode() == null) {
+        gcGrouperSyncMembership.setErrorCode(GcGrouperSyncErrorCode.ERR);
+        gcGrouperSyncMembership.setErrorMessage(GrouperUtil.getFullStackTrace(exception));
+        gcGrouperSyncMembership.setErrorTimestamp(new Timestamp(System.currentTimeMillis()));
+      }
+      
+      if (gcGrouperSyncMembership.getErrorCode() == null && provisioningMembershipWrapper.getErrorCode() != null) {
+        gcGrouperSyncMembership.setErrorCode(provisioningMembershipWrapper.getErrorCode());
+        gcGrouperSyncMembership.setErrorTimestamp(new Timestamp(System.currentTimeMillis()));
       }
       if (gcGrouperSyncMembership.getErrorCode() == null) {
         continue;
@@ -1369,9 +1405,9 @@ public class GrouperProvisioningLogic {
 
       if (!this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectGroups() 
           && !this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectGroupsAll()
-          && provisioningGroupWrapper.getProvisioningStateGroup().isCreate()
+          // && provisioningGroupWrapper.getProvisioningStateGroup().isCreate()
           && gcGrouperSyncGroup != null
-          && !gcGrouperSyncGroup.isInTarget()) {
+          && (gcGrouperSyncGroup.getInTarget() == null || !gcGrouperSyncGroup.getInTarget())) {
         shouldSkip = false;
       }
       
@@ -1678,7 +1714,7 @@ public class GrouperProvisioningLogic {
           && !this.getGrouperProvisioner().retrieveGrouperProvisioningBehavior().isSelectEntitiesAll()
           // && provisioningEntityWrapper.isCreate()
           && gcGrouperSyncMember != null
-          && !gcGrouperSyncMember.isInTarget()) {
+          && (gcGrouperSyncMember.getInTarget() == null || !gcGrouperSyncMember.getInTarget())) {
         shouldSkip = false;
       }
       
@@ -1882,6 +1918,8 @@ public class GrouperProvisioningLogic {
 
     // incrementals need to consult sync objects to know what to delete
     calculateProvisioningDataToDelete(); 
+    
+    this.grouperProvisioner.retrieveGrouperDao().fixGrouperProvisioningMembershipReferences();
 
     GcGrouperSync gcGrouperSync = this.grouperProvisioner.getGcGrouperSync();
     gcGrouperSync.setGroupCount(GrouperUtil.length(grouperProvisioningLists.getProvisioningGroups()));
@@ -2399,7 +2437,7 @@ public class GrouperProvisioningLogic {
       
       GcGrouperSyncGroup gcGrouperSyncGroup = provisioningGroupWrapper.getGcGrouperSyncGroup();
 
-      if (gcGrouperSyncGroup != null && !gcGrouperSyncGroup.isInTarget()) {
+      if (gcGrouperSyncGroup != null && (gcGrouperSyncGroup.getInTarget() == null || !gcGrouperSyncGroup.getInTarget())) {
 
         Timestamp nowTimestamp = new Timestamp(System.currentTimeMillis());
         gcGrouperSyncGroup.setInTarget(true);
@@ -2433,7 +2471,7 @@ public class GrouperProvisioningLogic {
       String membershipAttributeName = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getAttributeNameForMemberships();
 
       for (ProvisioningGroup provisioningGroup : GrouperUtil.nonNull(targetProvisioningGroups)) {
-        int membershipSize = GrouperUtil.length(provisioningGroup.retrieveAttributeValueSet(membershipAttributeName));
+        int membershipSize = GrouperUtil.length(provisioningGroup.retrieveAttributeValueSetForMemberships());
         GrouperUtil.mapAddValue(this.getGrouperProvisioner().getDebugMap(), "targetMembershipsRetrieved", 
             membershipSize);
         if (!isExtra) {
@@ -2477,7 +2515,7 @@ public class GrouperProvisioningLogic {
       
       GcGrouperSyncMember gcGrouperSyncMember = provisioningEntityWrapper.getGcGrouperSyncMember();
 
-      if (gcGrouperSyncMember != null && !gcGrouperSyncMember.isInTarget()) {
+      if (gcGrouperSyncMember != null && (gcGrouperSyncMember.getInTarget() == null || !gcGrouperSyncMember.getInTarget())) {
 
         Timestamp nowTimestamp = new Timestamp(System.currentTimeMillis());
         gcGrouperSyncMember.setInTarget(true);
@@ -2511,7 +2549,7 @@ public class GrouperProvisioningLogic {
         == GrouperProvisioningBehaviorMembershipType.entityAttributes) {
         
       for (ProvisioningEntity provisioningEntity : GrouperUtil.nonNull(targetProvisioningEntities)) {
-        int membershipSize = GrouperUtil.length(provisioningEntity.retrieveAttributeValueSet(membershipAttributeName));
+        int membershipSize = GrouperUtil.length(provisioningEntity.retrieveAttributeValueSetForMemberships());
         GrouperUtil.mapAddValue(this.getGrouperProvisioner().getDebugMap(), "targetMembershipsRetrieved", 
             membershipSize);
         if (!isExtra) {
@@ -2860,7 +2898,7 @@ public class GrouperProvisioningLogic {
     
     Map<String, ProvisioningEntityWrapper> memberIdToEntityWrapperToDelete = new HashMap<>();
   
-    // loop through sync groups
+    // loop through sync entities
     for (ProvisioningEntityWrapper provisioningEntityWrapper : this.getGrouperProvisioner().retrieveGrouperProvisioningData().getProvisioningEntityWrappers()) {
   
       GcGrouperSyncMember gcGrouperSyncMember = provisioningEntityWrapper.getGcGrouperSyncMember();
@@ -2872,7 +2910,13 @@ public class GrouperProvisioningLogic {
         
         memberIdToEntityWrapperToDelete.put(gcGrouperSyncMember.getMemberId(), provisioningEntityWrapper);
         provisioningEntitiesToDelete++;
+        continue;
+      }
+      if (this.grouperProvisioner.retrieveGrouperProvisioningConfiguration().isUnresolvableSubjectsRemove() && provisioningEntityWrapper.getProvisioningStateEntity().isUnresolvable()) {
         
+        memberIdToEntityWrapperToDelete.put(gcGrouperSyncMember.getMemberId(), provisioningEntityWrapper);
+        provisioningEntitiesToDelete++;
+        continue;
       }
     }
     
@@ -2946,6 +2990,13 @@ public class GrouperProvisioningLogic {
       
       provisioningEntityWrapper.setGrouperProvisioningEntity(grouperProvisioningEntity);
       provisioningEntityWrapper.getProvisioningStateEntity().setDelete(true);
+      provisioningEntityWrapper.getProvisioningStateEntity().setUpdate(false);
+      provisioningEntityWrapper.getProvisioningStateEntity().setCreate(false);
+      
+      if (provisioningEntityWrapper.getGcGrouperSyncMember() != null && provisioningEntityWrapper.getGcGrouperSyncMember().isProvisionable()) {
+        provisioningEntityWrapper.getGcGrouperSyncMember().setProvisionable(false);
+        provisioningEntityWrapper.getGcGrouperSyncMember().setProvisionableEnd(new Timestamp(System.currentTimeMillis()));
+      }
       
       memberUuidToProvisioningMemberWrapper.put(grouperProvisioningEntity.getId(), provisioningEntityWrapper);
       
@@ -3017,6 +3068,8 @@ public class GrouperProvisioningLogic {
         
         provisioningGroupWrapper.setGrouperProvisioningGroup(grouperProvisioningGroup);
         provisioningGroupWrapper.getProvisioningStateGroup().setDelete(true);
+        provisioningGroupWrapper.getProvisioningStateGroup().setUpdate(false);
+        provisioningGroupWrapper.getProvisioningStateGroup().setCreate(false);
         
         groupUuidToProvisioningGroupWrapper.put(gcGrouperSyncGroup.getGroupId(), provisioningGroupWrapper);
         
@@ -3055,11 +3108,15 @@ public class GrouperProvisioningLogic {
         
         ProvisioningGroupWrapper provisioningGroupWrapper = gcGrouperSyncGroupIdToProvisioningGroupWrapper.get(gcGrouperSyncMembership.getGrouperSyncGroupId());
         if (provisioningGroupWrapper == null) {
-          throw new RuntimeException("Cant find groupId: '" + gcGrouperSyncMembership.getGrouperSyncGroupId() + "'");
+          this.getGrouperProvisioner().retrieveGrouperProvisioningValidation().assignMembershipError(provisioningMembershipWrapper, GcGrouperSyncErrorCode.ERR, 
+              "Cant find syncGroupId: '" + gcGrouperSyncMembership.getGrouperSyncGroupId() + "'");
+          continue;
         }
         ProvisioningEntityWrapper provisioningEntityWrapper = gcGrouperSyncMemberIdToProvisioningEntityWrapper.get(gcGrouperSyncMembership.getGrouperSyncMemberId());
         if (provisioningEntityWrapper == null) {
-          throw new RuntimeException("Cant find entityId: '" + gcGrouperSyncMembership.getGrouperSyncMemberId() + "'");
+          this.getGrouperProvisioner().retrieveGrouperProvisioningValidation().assignMembershipError(provisioningMembershipWrapper, GcGrouperSyncErrorCode.ERR, 
+              "Cant find syncMemberId: '" + gcGrouperSyncMembership.getGrouperSyncMemberId() + "'");
+          continue;
         }
 
         GcGrouperSyncGroup gcGrouperSyncGroup = provisioningGroupWrapper.getGcGrouperSyncGroup();
@@ -3080,14 +3137,18 @@ public class GrouperProvisioningLogic {
         if (provisioningGroupWrapper.getGrouperProvisioningGroup() != null) {
           provisioningMembership.setProvisioningGroup(provisioningGroupWrapper.getGrouperProvisioningGroup());
         } else {
-          throw new RuntimeException("Cant find provisioning group: '" + groupId + "'");
+          this.getGrouperProvisioner().retrieveGrouperProvisioningValidation().assignMembershipError(provisioningMembershipWrapper, GcGrouperSyncErrorCode.ERR, 
+              "Cant find provisioning group, groupId: '" + groupId + "'");
+          continue;
         }
   
         // the group is either the provisioning group or provisioning group to delete
         if (provisioningEntityWrapper.getGrouperProvisioningEntity() != null) {
           provisioningMembership.setProvisioningEntity(provisioningEntityWrapper.getGrouperProvisioningEntity());
         } else {
-          throw new RuntimeException("Cant find provisioning entity: '" + memberId + "'");
+          this.getGrouperProvisioner().retrieveGrouperProvisioningValidation().assignMembershipError(provisioningMembershipWrapper, GcGrouperSyncErrorCode.ERR, 
+              "Cant find provisioning entity, memberId: '" + memberId + "'");
+          continue;
         }
           
         provisioningMembershipWrapper.setGrouperProvisioningMembership(provisioningMembership);
@@ -3095,9 +3156,14 @@ public class GrouperProvisioningLogic {
         
         groupUuidMemberUuidToProvisioningMembershipWrapper.put(provisioningMembershipWrapper.getGroupIdMemberId(), provisioningMembershipWrapper);
         
+      } else if (provisioningMembershipWrapper.getProvisioningEntityWrapper() != null && provisioningMembershipWrapper.getProvisioningEntityWrapper().getProvisioningStateEntity().isUnresolvable()
+          && this.grouperProvisioner.retrieveGrouperProvisioningConfiguration().isUnresolvableSubjectsRemove()) {
+        provisioningMshipsToDelete++;
+        provisioningMembershipWrapper.getProvisioningStateMembership().setDelete(true);
+        
       }
       provisioningMembershipWrapper.setGcGrouperSyncMembership(gcGrouperSyncMembership);
-      
+        
       if (gcGrouperSyncMembership != null) {
         this.getGrouperProvisioner().retrieveGrouperProvisioningDataIndex()
         .getGrouperSyncGroupIdGrouperSyncMemberIdToProvisioningMembershipWrapper().put(new MultiKey(gcGrouperSyncMembership.getGrouperSyncGroupId(), gcGrouperSyncMembership.getGrouperSyncMemberId()), provisioningMembershipWrapper);
@@ -3206,7 +3272,7 @@ public class GrouperProvisioningLogic {
       }
 
       // the case we have a problem with is its in target but the target group is not there
-      if (!gcGrouperSyncGroup.isInTarget() || provisioningGroupWrapper.getTargetProvisioningGroup() != null) {
+      if ((gcGrouperSyncGroup.getInTarget() == null || !gcGrouperSyncGroup.getInTarget()) || provisioningGroupWrapper.getTargetProvisioningGroup() != null) {
         continue;
       }
             
@@ -3349,7 +3415,7 @@ public class GrouperProvisioningLogic {
       }
   
       // the case we have a problem with is its in target but the target group is not there
-      if (!gcGrouperSyncMember.isInTarget() || provisioningEntityWrapper.getTargetProvisioningEntity() != null) {
+      if ((gcGrouperSyncMember.getInTarget() == null || !gcGrouperSyncMember.getInTarget()) || provisioningEntityWrapper.getTargetProvisioningEntity() != null) {
         continue;
       }
       

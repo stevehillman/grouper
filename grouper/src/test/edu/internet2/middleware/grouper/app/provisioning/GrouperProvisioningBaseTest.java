@@ -47,9 +47,13 @@ public abstract class GrouperProvisioningBaseTest extends GrouperTest {
    */
   public GrouperProvisioningOutput fullProvision(String configId, boolean allowErrors) {
     
-    
-    GrouperLoader.runOnceByJobName(GrouperSession.staticGrouperSession(), "OTHER_JOB_provisioner_full_" + configId);
-
+    try {
+      GrouperLoader.runOnceByJobName(GrouperSession.staticGrouperSession(), "OTHER_JOB_provisioner_full_" + configId);
+    } catch (RuntimeException re) {
+      if (!allowErrors) {
+        throw re;
+      }
+    }
     GrouperProvisioner grouperProvisioner = GrouperProvisioner.retrieveInternalLastProvisioner();
 
     GrouperProvisioningOutput grouperProvisioningOutput = grouperProvisioner.retrieveGrouperProvisioningOutput(); 
@@ -100,7 +104,13 @@ public abstract class GrouperProvisioningBaseTest extends GrouperTest {
     }
     
     if (runConsumer) {
-      GrouperLoader.runOnceByJobName(GrouperSession.staticGrouperSession(), "CHANGE_LOG_consumer_provisioner_incremental_" + configId);
+      try {
+        GrouperLoader.runOnceByJobName(GrouperSession.staticGrouperSession(), "CHANGE_LOG_consumer_provisioner_incremental_" + configId);
+      } catch (RuntimeException e) {
+        if (!allowErrors) {
+          throw e;
+        }
+      }
       GrouperProvisioner grouperProvisioner = GrouperProvisioner.retrieveInternalLastProvisioner();
       GrouperProvisioningOutput grouperProvisioningOutput = grouperProvisioner.retrieveGrouperProvisioningOutput();
 

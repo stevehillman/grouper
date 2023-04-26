@@ -101,7 +101,7 @@ public class GrouperProvisioningMatchingIdIndex {
   }
 
   public void mergeInMembershipValues(ProvisioningGroup existingTargetGroup, ProvisioningGroup targetGroup, String membershipAttributeName, Object defaultValue) {
-    Set<?> values = targetGroup.retrieveAttributeValueSet(membershipAttributeName);
+    Set<?> values = targetGroup.retrieveAttributeValueSetForMemberships();
 
     // if the new part has nothing, continue
     if (GrouperUtil.length(values) == 0) {
@@ -114,14 +114,14 @@ public class GrouperProvisioningMatchingIdIndex {
     }
     
     // if the old part only has default, and the new exists, remove the old default
-    Set<?> membershipAttributeValueSet = existingTargetGroup.retrieveAttributeValueSet(membershipAttributeName);
+    Set<?> membershipAttributeValueSet = existingTargetGroup.retrieveAttributeValueSetForMemberships();
     if (GrouperUtil.length(membershipAttributeValueSet) == 1
         && GrouperUtil.equals(defaultValue, values.iterator().next())) {
       membershipAttributeValueSet.remove(defaultValue);
     }
     
     for (Object membershipValue : GrouperUtil.nonNull(values)) {
-      existingTargetGroup.addAttributeValue(membershipAttributeName, membershipValue);
+      existingTargetGroup.addAttributeValueForMembership(membershipValue, null, false);
     }
 
   }
@@ -360,8 +360,8 @@ public class GrouperProvisioningMatchingIdIndex {
     if (previousNewTargetGroupWrapper == null) {
       useNew = true;
     } else if (isGroupAttributes 
-        && GrouperUtil.length(previousNewTargetGroupWrapper.getTargetProvisioningGroup().retrieveAttributeValueSet(groupMembershipAttribute))
-        > GrouperUtil.length(currentNewTargetGroupWrapper.getTargetProvisioningGroup().retrieveAttributeValueSet(groupMembershipAttribute))) {
+        && GrouperUtil.length(previousNewTargetGroupWrapper.getTargetProvisioningGroup().retrieveAttributeValueSetForMemberships())
+        > GrouperUtil.length(currentNewTargetGroupWrapper.getTargetProvisioningGroup().retrieveAttributeValueSetForMemberships())) {
       // if the current one that is new has the most memberships, then keep it
       useNew = false;
     } else {
@@ -382,8 +382,8 @@ public class GrouperProvisioningMatchingIdIndex {
     if (previousNewTargetEntityWrapper == null) {
       useNew = true;
     } else if (isEntityAttributes 
-        && GrouperUtil.length(previousNewTargetEntityWrapper.getTargetProvisioningEntity().retrieveAttributeValueSet(entityMembershipAttribute))
-        > GrouperUtil.length(currentNewTargetEntityWrapper.getTargetProvisioningEntity().retrieveAttributeValueSet(entityMembershipAttribute))) {
+        && GrouperUtil.length(previousNewTargetEntityWrapper.getTargetProvisioningEntity().retrieveAttributeValueSetForMemberships())
+        > GrouperUtil.length(currentNewTargetEntityWrapper.getTargetProvisioningEntity().retrieveAttributeValueSetForMemberships())) {
       // if the current one that is new has the most memberships, then keep it
       useNew = false;
     } else {
@@ -519,6 +519,7 @@ public class GrouperProvisioningMatchingIdIndex {
       }
     }
     
+    // how many groups the target group matches
     Map<ProvisioningGroup, Integer> targetProvisioningGroupToMatchCount = new HashMap<>();
     Map<ProvisioningGroup, ProvisioningGroup> grouperTargetGroupMatchesTargetProvisioningGroup = new HashMap<>();
     Map<ProvisioningGroup, Set<ProvisioningGroup>> targetProvisioningGroupToSetOfTargetProvisioningGroups = new HashMap<>();
@@ -533,14 +534,15 @@ public class GrouperProvisioningMatchingIdIndex {
       // lets do current value of all attributes first
       for (boolean currentValue : new boolean[] {true, false}) {
 
-        targetProvisioningGroupToMatchCount.clear();
-        grouperTargetGroupMatchesTargetProvisioningGroup.clear();
-        targetProvisioningGroupToSetOfTargetProvisioningGroups.clear();
-        grouperTargetGroupToTargetId.clear();
-        
         // lets look in matching attributes in order
         // first do all current values, then do all past values
         for (GrouperProvisioningConfigurationAttribute matchingAttribute : this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getGroupMatchingAttributes()) {
+          targetProvisioningGroupToMatchCount.clear();
+          grouperTargetGroupMatchesTargetProvisioningGroup.clear();
+          targetProvisioningGroupToSetOfTargetProvisioningGroups.clear();
+          grouperTargetGroupToTargetId.clear();
+          
+
           String matchingAttributeName = matchingAttribute.getName();
           
           // go through unmatched grouper objects and try to find a match
@@ -884,6 +886,7 @@ public class GrouperProvisioningMatchingIdIndex {
       }
     }
     
+    // how many groups the target membership matches
     Map<ProvisioningMembership, Integer> targetProvisioningMembershipToMatchCount = new HashMap<>();
     Map<ProvisioningMembership, ProvisioningMembership> grouperTargetMembershipMatchesTargetProvisioningMembership = new HashMap<>();
     Map<ProvisioningMembership, Set<ProvisioningMembership>> targetProvisioningMembershipToSetOfTargetProvisioningMemberships = new HashMap<>();
@@ -1178,6 +1181,7 @@ public class GrouperProvisioningMatchingIdIndex {
       }
     }
     
+    // how many entities the target entity matches
     Map<ProvisioningEntity, Integer> targetProvisioningEntityToMatchCount = new HashMap<>();
     Map<ProvisioningEntity, ProvisioningEntity> grouperTargetEntityMatchesTargetProvisioningEntity = new HashMap<>();
     Map<ProvisioningEntity, Set<ProvisioningEntity>> targetProvisioningEntityToSetOfTargetProvisioningEntities = new HashMap<>();
@@ -1192,14 +1196,16 @@ public class GrouperProvisioningMatchingIdIndex {
       // lets do current value of all attributes first
       for (boolean currentValue : new boolean[] {true, false}) {
   
-        targetProvisioningEntityToMatchCount.clear();
-        grouperTargetEntityMatchesTargetProvisioningEntity.clear();
-        targetProvisioningEntityToSetOfTargetProvisioningEntities.clear();
-        grouperTargetEntityToTargetId.clear();
-        
         // lets look in matching attributes in order
         // first do all current values, then do all past values
         for (GrouperProvisioningConfigurationAttribute matchingAttribute : this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getEntityMatchingAttributes()) {
+          
+          targetProvisioningEntityToMatchCount.clear();
+          grouperTargetEntityMatchesTargetProvisioningEntity.clear();
+          targetProvisioningEntityToSetOfTargetProvisioningEntities.clear();
+          grouperTargetEntityToTargetId.clear();
+          
+
           String matchingAttributeName = matchingAttribute.getName();
           
           // go through unmatched grouper objects and try to find a match
@@ -1428,7 +1434,7 @@ public class GrouperProvisioningMatchingIdIndex {
 
 
   public void mergeInMembershipValues(ProvisioningEntity existingTargetEntity, ProvisioningEntity targetEntity, String membershipAttributeName, Object defaultValue) {
-    Set<?> values = targetEntity.retrieveAttributeValueSet(membershipAttributeName);
+    Set<?> values = targetEntity.retrieveAttributeValueSetForMemberships();
   
     // if the new part has nothing, continue
     if (GrouperUtil.length(values) == 0) {
@@ -1441,14 +1447,14 @@ public class GrouperProvisioningMatchingIdIndex {
     }
     
     // if the old part only has default, and the new exists, remove the old default
-    Set<?> membershipAttributeValueSet = existingTargetEntity.retrieveAttributeValueSet(membershipAttributeName);
+    Set<?> membershipAttributeValueSet = existingTargetEntity.retrieveAttributeValueSetForMemberships();
     if (GrouperUtil.length(membershipAttributeValueSet) == 1
         && GrouperUtil.equals(defaultValue, values.iterator().next())) {
       membershipAttributeValueSet.remove(defaultValue);
     }
     
     for (Object membershipValue : GrouperUtil.nonNull(values)) {
-      existingTargetEntity.addAttributeValue(membershipAttributeName, membershipValue);
+      existingTargetEntity.addAttributeValueForMembership(membershipValue, null, false);
     }
   
   }

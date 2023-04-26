@@ -118,13 +118,13 @@ public class GrouperVersion {
         grouperVersionString = GrouperCheckConfig.jarVersion(GrouperVersion.class);
       } catch (Exception e) {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Can't find version of grouper jar, using 2.6.0", e);
+          LOG.debug("Can't find version of grouper jar, using 4.0.0", e);
         } else {
-          LOG.warn("Can't find version of grouper jar, using 2.6.0");
+          LOG.warn("Can't find version of grouper jar, using 4.0.0");
         }
       }
       if (grouperVersionString == null) {
-        grouperVersionString = "2.6.0";
+        grouperVersionString = "4.0.0";
       }
     }
     return grouperVersionString;
@@ -247,7 +247,7 @@ public class GrouperVersion {
       if (grouperMatcher.matches()) {
         this.major = GrouperUtil.intValue(grouperMatcher.group(1));
         this.minor = GrouperUtil.intValue(grouperMatcher.group(2));
-        this.build = GrouperUtil.intValue(grouperMatcher.group(3));
+       this.build = GrouperUtil.intValue(grouperMatcher.group(3), 0);
         
         // snapshot will always be less than any rc version
         this.rc = -1;

@@ -19,6 +19,7 @@ import edu.internet2.middleware.grouper.app.provisioning.GrouperProvisioner;
 import edu.internet2.middleware.grouper.app.provisioning.GrouperProvisioningBehaviorMembershipType;
 import edu.internet2.middleware.grouper.app.provisioning.GrouperProvisioningConfiguration;
 import edu.internet2.middleware.grouper.app.provisioning.GrouperProvisioningConfigurationAttribute;
+import edu.internet2.middleware.grouper.app.provisioning.GrouperProvisioningConfigurationAttributeType;
 import edu.internet2.middleware.grouper.app.provisioning.GrouperProvisioningLists;
 import edu.internet2.middleware.grouper.app.provisioning.GrouperProvisioningType;
 import edu.internet2.middleware.grouper.app.provisioning.ProvisioningAttribute;
@@ -56,6 +57,7 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
   
   /** logger */
   private static final Log LOG = GrouperUtil.getLog(GrouperProvisionerTargetDaoAdapter.class);
+  
   
   @Override
   public GrouperProvisionerDaoCapabilities getGrouperProvisionerDaoCapabilities() {
@@ -1095,7 +1097,8 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
                 continue;
               }
 
-              searchValueToSearchGrouperTargetGroup.put(GrouperUtil.stringValue(provisioningUpdatableAttributeAndValue.getAttributeValue()), grouperTargetGroup);
+              searchValueToSearchGrouperTargetGroup.put(provisioningUpdatableAttributeAndValue.getCompareValue(), grouperTargetGroup);
+
               searchAttributeValues.add(provisioningUpdatableAttributeAndValue.getAttributeValue());
             }              
           }
@@ -1117,7 +1120,10 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
             for (ProvisioningGroup retrievedTargetGroup : GrouperUtil.nonNull(targetDaoRetrieveGroupsResponse.getTargetGroups())) {
               Object targetGroupValue = retrievedTargetGroup.retrieveAttributeValue(searchAttributeName);
               if(!GrouperUtil.isBlank(targetGroupValue)) {
-                ProvisioningGroup grouperTargetGroup = searchValueToSearchGrouperTargetGroup.get(GrouperUtil.stringValue(targetGroupValue));
+                 String targetGroupValueString = this.getGrouperProvisioner().retrieveGrouperProvisioningCompare().attributeValueForCompareGroup(
+                    searchAttributeName, targetGroupValue);
+                
+                ProvisioningGroup grouperTargetGroup = searchValueToSearchGrouperTargetGroup.get(targetGroupValueString);
                 if (grouperTargetGroup != null) {
                   if (!currentValue) {
                     retrieveGroupsFromCache++;
@@ -1305,7 +1311,7 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
                 continue;
               }
 
-              searchValueToSearchGrouperTargetGroup.put(GrouperUtil.stringValue(provisioningUpdatableAttributeAndValue.getAttributeValue()), grouperTargetGroup);
+              searchValueToSearchGrouperTargetGroup.put(provisioningUpdatableAttributeAndValue.getCompareValue(), grouperTargetGroup);
               searchAttributeValues.add(provisioningUpdatableAttributeAndValue.getAttributeValue());
             }              
             
@@ -1333,7 +1339,11 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
               // pluck each one out from the remaining groups to find
               Object targetGroupValue = retrievedTargetGroup.retrieveAttributeValue(searchAttributeName);
               if(!GrouperUtil.isBlank(targetGroupValue)) {
-                ProvisioningGroup grouperTargetGroup = searchValueToSearchGrouperTargetGroup.get(GrouperUtil.stringValue(targetGroupValue));
+
+                String targetGroupValueString = this.getGrouperProvisioner().retrieveGrouperProvisioningCompare().attributeValueForCompareGroup(
+                    searchAttributeName, targetGroupValue);
+                
+                ProvisioningGroup grouperTargetGroup = searchValueToSearchGrouperTargetGroup.get(targetGroupValueString);
                 if (grouperTargetGroup != null) {
                   if (!currentValue) {
                     retrieveGroupsFromCache++;
@@ -1620,7 +1630,7 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
                 continue;
               }
 
-              searchValueToSearchGrouperTargetEntity.put(GrouperUtil.stringValue(provisioningUpdatableAttributeAndValue.getAttributeValue()), grouperTargetEntity);
+              searchValueToSearchGrouperTargetEntity.put(provisioningUpdatableAttributeAndValue.getCompareValue(), grouperTargetEntity);
               searchAttributeValues.add(provisioningUpdatableAttributeAndValue.getAttributeValue());
             }              
             
@@ -1648,7 +1658,9 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
               // pluck each one out from the remaining entities to find
               Object targetEntityValue = retrievedTargetEntity.retrieveAttributeValue(searchAttributeName);
               if(!GrouperUtil.isBlank(targetEntityValue)) {
-                ProvisioningEntity grouperTargetEntity = searchValueToSearchGrouperTargetEntity.get(GrouperUtil.stringValue(targetEntityValue));
+                 String targetEntityValueString = this.getGrouperProvisioner().retrieveGrouperProvisioningCompare().attributeValueForCompareEntity(
+                    searchAttributeName, targetEntityValue);
+                ProvisioningEntity grouperTargetEntity = searchValueToSearchGrouperTargetEntity.get(targetEntityValueString);
                 if (grouperTargetEntity != null) {
                   if (!currentValue) {
                     retrieveEntitiesFromCache++;
@@ -2332,118 +2344,6 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
 
 
     
-    
-    
-    
-//
-//    
-//}
-//
-//throw new RuntimeException("Dao cannot retrieve memberships or membership");
-//}
-
-    
-//    
-//      
-//      List<ProvisioningMembership> processedTargetMemberships = new ArrayList<ProvisioningMembership>();
-//      List<ProvisioningGroup> processedTargetGroups = new ArrayList<>();
-//      List<ProvisioningEntity> processedTargetEntities = new ArrayList<>();
-//
-//      for (ProvisioningMembership targetMembership : targetMemberships) {
-//        processedTargetMemberships.add(targetMembership);
-//      }
-//
-//      for (ProvisioningGroup targetGroup : targetGroups) {
-//
-//        GrouperProvisioningConfiguration grouperProvisioningConfiguration = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration();
-//        String membershipAttributeName = grouperProvisioningConfiguration.getGroupMembershipAttributeName();
-//
-//        Set<?> membershipAttributeValueSet = targetGroup.retrieveAttributeValueSet(membershipAttributeName);
-//
-//        for (Object membershipValue: GrouperUtil.nonNull(membershipAttributeValueSet)) {
-//
-//          ProvisioningGroup clonedTargetGroup = targetGroup.clone();
-//          ProvisioningAttribute provisioningAttribute = new ProvisioningAttribute();
-//          provisioningAttribute.setValue(GrouperUtil.toSet(membershipValue));
-//          provisioningAttribute.setName(membershipAttributeName);
-//
-//          clonedTargetGroup.getAttributes().put(membershipAttributeName, provisioningAttribute);
-//          processedTargetGroups.add(clonedTargetGroup);
-//
-//        }
-//
-//      }
-//
-//      for (ProvisioningEntity targetEntity : targetEntities) {
-//
-//        GrouperProvisioningConfiguration grouperProvisioningConfiguration = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration();
-//        String membershipAttributeName = grouperProvisioningConfiguration.getEntityMembershipAttributeName();
-//
-//        Set<?> membershipAttributeValueSet = targetEntity.retrieveAttributeValueSet(membershipAttributeName);
-//
-//        for (Object membershipValue: GrouperUtil.nonNull(membershipAttributeValueSet)) {
-//
-//          ProvisioningEntity clonedTargetEntity = targetEntity.clone();
-//          ProvisioningAttribute provisioningAttribute = new ProvisioningAttribute();
-//          provisioningAttribute.setValue(GrouperUtil.toSet(membershipValue));
-//          provisioningAttribute.setName(membershipAttributeName);
-//
-//          clonedTargetEntity.getAttributes().put(membershipAttributeName, provisioningAttribute);
-//          processedTargetEntities.add(clonedTargetEntity);
-//        }
-//      }
-//
-//      
-//      for (ProvisioningGroup provisioningGroup: processedTargetGroups) {
-//        GrouperCallable<Void> grouperCallable = new GrouperCallable<Void>("retrieveMembership_" + 
-//            this.getGrouperProvisioner().getConfigId() + "_" + this.getGrouperProvisioner().getInstanceId()) {
-//
-//          @Override
-//          public Void callLogic() {
-//            TargetDaoRetrieveMembershipRequest targetDaoRetrieveMembershipRequestLocal = new TargetDaoRetrieveMembershipRequest();
-//            targetDaoRetrieveMembershipRequestLocal.setTargetGroup(provisioningGroup);
-//            TargetDaoRetrieveMembershipResponse targetDaoRetrieveMembershipResponseLocal = retrieveMembershipHelper(targetDaoRetrieveMembershipRequestLocal);
-//            synchronized(targetDaoRetrieveMembershipsResponse) {
-//              if (targetDaoRetrieveMembershipsResponse.getTargetGroups() == null) {
-//                List<ProvisioningGroup> targetGroupsLocal = new ArrayList<ProvisioningGroup>();
-//                targetDaoRetrieveMembershipsResponse.setTargetGroups(targetGroupsLocal);
-//              }
-//              if (targetDaoRetrieveMembershipResponseLocal.getTargetGroup() != null) {
-//                targetDaoRetrieveMembershipsResponse.getTargetGroups().add(targetDaoRetrieveMembershipResponseLocal.getTargetGroup());
-//              }
-//            }
-//
-//            return null;
-//          }
-//        };
-//        grouperCallables.add(grouperCallable);
-//      }
-//      
-//      for (ProvisioningEntity provisioningEntity: processedTargetEntities) {
-//        GrouperCallable<Void> grouperCallable = new GrouperCallable<Void>("retrieveMembership_" + 
-//            this.getGrouperProvisioner().getConfigId() + "_" + this.getGrouperProvisioner().getInstanceId()) {
-//
-//          @Override
-//          public Void callLogic() {
-//            TargetDaoRetrieveMembershipRequest targetDaoRetrieveMembershipRequestLocal = new TargetDaoRetrieveMembershipRequest();
-//            targetDaoRetrieveMembershipRequestLocal.setTargetEntity(provisioningEntity);
-//            TargetDaoRetrieveMembershipResponse targetDaoRetrieveMembershipResponseLocal = retrieveMembershipHelper(targetDaoRetrieveMembershipRequestLocal);
-//            synchronized(targetDaoRetrieveMembershipsResponse) {
-//              if (targetDaoRetrieveMembershipsResponse.getTargetEntities() == null) {
-//                List<ProvisioningEntity> targetEntities = new ArrayList<ProvisioningEntity>();
-//                targetDaoRetrieveMembershipsResponse.setTargetEntities(targetEntities);
-//              }
-//              if (targetDaoRetrieveMembershipResponseLocal.getTargetEntity() != null) {
-//                targetDaoRetrieveMembershipsResponse.getTargetEntities().add(targetDaoRetrieveMembershipResponseLocal.getTargetEntity());
-//              }
-//            }
-//
-//            return null;
-//          }
-//        };
-//        grouperCallables.add(grouperCallable);
-//      }
-
   public TargetDaoRetrieveEntitiesResponse retrieveEntitiesHelper(
       TargetDaoRetrieveEntitiesRequest targetDaoRetrieveEntitiesRequest) {
     
@@ -2487,7 +2387,8 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
                 continue;
               }
 
-              searchValueToSearchGrouperTargetEntity.put(GrouperUtil.stringValue(provisioningUpdatableAttributeAndValue.getAttributeValue()), grouperTargetEntity);
+              searchValueToSearchGrouperTargetEntity.put(provisioningUpdatableAttributeAndValue.getCompareValue(), grouperTargetEntity);
+              
               searchAttributeValues.add(provisioningUpdatableAttributeAndValue.getAttributeValue());
             }              
           }
@@ -2510,7 +2411,9 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
             for (ProvisioningEntity retrievedTargetEntity : GrouperUtil.nonNull(targetDaoRetrieveEntitiesResponse.getTargetEntities())) {
               Object targetEntityValue = retrievedTargetEntity.retrieveAttributeValue(searchAttributeName);
               if(!GrouperUtil.isBlank(targetEntityValue)) {
-                ProvisioningEntity grouperTargetEntity = searchValueToSearchGrouperTargetEntity.get(GrouperUtil.stringValue(targetEntityValue));
+                String targetEntityValueString = this.getGrouperProvisioner().retrieveGrouperProvisioningCompare().attributeValueForCompareEntity(
+                    searchAttributeName, targetEntityValue);
+                ProvisioningEntity grouperTargetEntity = searchValueToSearchGrouperTargetEntity.get(targetEntityValueString);
                 if (grouperTargetEntity != null) {
                   if (!currentValue) {
                     retrieveEntitiesFromCache++;
@@ -2525,7 +2428,8 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
                       provisioningEntityWrapper.setTargetProvisioningEntity(retrievedTargetEntity);
                       retrievedTargetEntity.setProvisioningEntityWrapper(provisioningEntityWrapper);
                       if (targetDaoRetrieveEntitiesResponse.getTargetEntityToTargetNativeEntity() != null) {
-                        provisioningEntityWrapper.setTargetNativeEntity(targetDaoRetrieveEntitiesResponse.getTargetEntityToTargetNativeEntity().get(retrievedTargetEntity));
+                        provisioningEntityWrapper.setTargetNativeEntity(targetDaoRetrieveEntitiesResponse
+                            .getTargetEntityToTargetNativeEntity().get(retrievedTargetEntity));
                       }
                     }
                   }
@@ -2559,7 +2463,59 @@ public class GrouperProvisionerTargetDaoAdapter extends GrouperProvisionerTarget
 
   }
 
-
+  /**
+   * retrieve entities based on search values. Use preferred search attribute or the first search attribute.
+   * for e.g. if the user has owners metadata and listing values, look up entities based on those values
+   * @param searchValues
+   * @return
+   */
+  public TargetDaoRetrieveEntitiesByValuesResponse retrieveEntitiesBySearchValues(TargetDaoRetrieveEntitiesByValuesRequest targetDaoRetrieveEntitiesByValuesRequest) {
+    
+    
+    String searchAttributeName = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getSearchAttributeNameToRetrieveEntities();
+    
+    if (StringUtils.isBlank(searchAttributeName)) {
+      List<GrouperProvisioningConfigurationAttribute> entitySearchAttributes = this.getGrouperProvisioner().retrieveGrouperProvisioningConfiguration().getEntitySearchAttributes();
+      searchAttributeName = entitySearchAttributes.get(0).getName();
+    }
+  
+    Set<Object> searchValues = targetDaoRetrieveEntitiesByValuesRequest.getSearchValues();
+    
+    List<ProvisioningEntity> entitiesToSearch = new ArrayList<>();
+    for (Object searchValue: GrouperUtil.nonNull(searchValues)) {
+      ProvisioningEntity targetEntity = new ProvisioningEntity();
+      targetEntity.assignAttributeValue(searchAttributeName, searchValue);
+      
+      ProvisioningUpdatableAttributeAndValue provisioningUpdatableAttributeAndValue = 
+          new ProvisioningUpdatableAttributeAndValue(this.getGrouperProvisioner(), searchAttributeName, searchValue,
+              GrouperProvisioningConfigurationAttributeType.entity);
+      provisioningUpdatableAttributeAndValue.setCurrentValue(true);
+      
+      targetEntity.setSearchIdAttributeNameToValues(GrouperUtil.toSet(provisioningUpdatableAttributeAndValue));
+      entitiesToSearch.add(targetEntity);
+    }
+    
+ 
+    TargetDaoRetrieveEntitiesRequest targetDaoRetrieveEntitiesRequest = new TargetDaoRetrieveEntitiesRequest();
+    targetDaoRetrieveEntitiesRequest.setTargetEntities(entitiesToSearch);
+    targetDaoRetrieveEntitiesRequest.setIncludeAllMembershipsIfApplicable(false);
+    TargetDaoRetrieveEntitiesResponse targetDaoRetrieveEntitiesResponse = this.getGrouperProvisioner().retrieveGrouperProvisioningTargetDaoAdapter().retrieveEntities(
+        targetDaoRetrieveEntitiesRequest);
+    
+    TargetDaoRetrieveEntitiesByValuesResponse byValuesResponse = new TargetDaoRetrieveEntitiesByValuesResponse();
+    Map<Object, ProvisioningEntity> searchValueToTargetEntity = new HashMap<>();
+    
+    for (ProvisioningEntity provisioningEntity : GrouperUtil.nonNull(targetDaoRetrieveEntitiesResponse.getTargetEntities())) {
+      Object value = provisioningEntity.retrieveAttributeValue(searchAttributeName);
+      if (searchValues.contains(value)) {
+        searchValueToTargetEntity.put(value, provisioningEntity);
+      }
+    }
+    
+    byValuesResponse.setSearchValueToTargetEntity(searchValueToTargetEntity);
+    
+    return byValuesResponse;
+  }
 
   @Override
   public TargetDaoRetrieveEntitiesResponse retrieveEntities(

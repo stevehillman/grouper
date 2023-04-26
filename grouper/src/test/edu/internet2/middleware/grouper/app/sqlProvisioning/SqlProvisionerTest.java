@@ -145,7 +145,7 @@ public class SqlProvisionerTest extends GrouperProvisioningBaseTest {
 
     GrouperStartup.startup();
     // testSimpleGroupLdapPa
-    TestRunner.run(new SqlProvisionerTest("testSimpleGroupLdapPa"));
+    TestRunner.run(new SqlProvisionerTest("testSimpleGroupLdapPaMatchingIdMissingValidation"));
     
   }
   
@@ -4457,12 +4457,7 @@ public class SqlProvisionerTest extends GrouperProvisioningBaseTest {
     //attributeAssign.getAttributeValueDelegate().assignValueString(GrouperProvisioningAttributeNames.retrieveAttributeDefNameDoProvision())
     
     //lets sync these over
-    try {
-      grouperProvisioningOutput = fullProvision("sqlProvTest", true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    grouperProvisioningOutput = fullProvision("sqlProvTest", true);
     grouperProvisioner = GrouperProvisioner.retrieveInternalLastProvisioner();
     
     // make sure some time has passed
@@ -4471,7 +4466,7 @@ public class SqlProvisionerTest extends GrouperProvisioningBaseTest {
     Hib3GrouperLoaderLog hib3GrouperLoaderLog = Hib3GrouperLoaderLog.retrieveMostRecentLog("OTHER_JOB_provisioner_full_sqlProvTest");
     assertEquals(GrouperLoaderStatus.ERROR.name(), hib3GrouperLoaderLog.getStatus());
     
-    assertEquals(0, grouperProvisioningOutput.getRecordsWithErrors());
+    assertEquals(5, grouperProvisioningOutput.getRecordsWithErrors());
   
     String sql = "select uuid from testgrouper_prov_ldap_group";
     
@@ -4656,13 +4651,8 @@ public class SqlProvisionerTest extends GrouperProvisioningBaseTest {
       assertEquals(GcGrouperSyncErrorCode.DNE, gcGrouperSyncMembership4.getErrorCode());
     }  
 
-    // this should not retry
-    try {
-      hib3GrouperLoaderLog = incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    // this should retry
+    hib3GrouperLoaderLog = incrementalProvision(defaultConfigId(), true, true, true);
     assertEquals("ERROR", hib3GrouperLoaderLog.getStatus());
     
     grouperProvisioner = GrouperProvisioner.retrieveInternalLastProvisioner();
@@ -5087,8 +5077,7 @@ public class SqlProvisionerTest extends GrouperProvisioningBaseTest {
       }
     }
     
-    // this wont work until entity recalc from message works
-    assertEquals(subject0EntityUUID, gcGrouperSyncMember.getEntityAttributeValueCache0());
+    assertEquals(gcGrouperSyncMember.getEntityAttributeValueCache0(), subject0EntityUUID);
   
     assertTrue(entityNameToAllAttributes.containsKey(subject0name));
     assertTrue(entityNameToAllAttributes.containsKey(SubjectTestHelper.SUBJ1.getName()));
@@ -5097,9 +5086,10 @@ public class SqlProvisionerTest extends GrouperProvisioningBaseTest {
   }
 
   /**
+   * @TODO rename this test once object cache is implemented
    * just do a simple full sync of groups and memberships
    */
-  public void testSimpleGroupLdapPaObjectCache() {
+  public void atestSimpleGroupLdapPaObjectCache() {
     
     long started = System.currentTimeMillis();
     

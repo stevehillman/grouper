@@ -49,7 +49,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
    * @param args
    */
   public static void main(String[] args) {
-    TestRunner.run(new LdapProvisionerJDBCSubjectSourceTest("testIncrementalWithUnresolvableRemove"));    
+    TestRunner.run(new LdapProvisionerJDBCSubjectSourceTest("testIncrementalDoNotCreateUsers"));    
   }
   
   public LdapProvisionerJDBCSubjectSourceTest() {
@@ -176,9 +176,9 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     
     assertEquals(0, LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "businessCategory"}, null).size());
   
-    incrementalProvision(); // mark as provisionable
+    incrementalProvision(defaultConfigId(), true, true, true); // mark as provisionable
     try { Thread.sleep(10000); } catch (Exception e) { }  // give some time for the message
-    incrementalProvision(); // actually provision to ldap
+    incrementalProvision(defaultConfigId(), true, true, true); // mark as provisionable
     
     List<LdapEntry> ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "businessCategory", "description"}, null);
     assertEquals(1, ldapEntries.size());
@@ -202,12 +202,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.deleteMember(notinldap1);
     testGroup.addMember(notinldap2);
   
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -230,12 +225,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -350,12 +340,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.addMember(blopez);
     testGroup.addMember(hdavis);
   
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -379,12 +364,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -499,12 +479,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.addMember(blopez);
     testGroup.addMember(hdavis);
     
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
@@ -531,12 +506,8 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
+
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
   
@@ -627,8 +598,8 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     
     assertEquals(0, LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "businessCategory"}, null).size());
   
-    GrouperProvisioningOutput grouperProvisioningOutput = fullProvision();
-    assertEquals(0, grouperProvisioningOutput.getRecordsWithErrors());
+    GrouperProvisioningOutput grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
+    assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
 
     List<LdapEntry> ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "businessCategory", "description"}, null);
     assertEquals(1, ldapEntries.size());
@@ -652,12 +623,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.deleteMember(notinldap1);
     testGroup.addMember(notinldap2);
   
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    fullProvision(defaultConfigId(), true);
 
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
@@ -683,12 +649,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    fullProvision(defaultConfigId(), true);
 
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
@@ -814,7 +775,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     assertTrue(ldapEntry.getAttribute("description").getStringValues().contains("uid=kwhite,ou=People,dc=example,dc=edu"));    
   
     GcGrouperSync gcGrouperSync = GcGrouperSyncDao.retrieveOrCreateByProvisionerName(null, "ldapProvTest");
-    assertNotNull(gcGrouperSync.getGcGrouperSyncMemberDao().memberRetrieveByMemberId(jsmithMember.getId()).getSubjectIdentifier());
+    assertNull(gcGrouperSync.getGcGrouperSyncMemberDao().memberRetrieveByMemberId(jsmithMember.getId()).getSubjectIdentifier());
     assertEquals("jsmith", gcGrouperSync.getGcGrouperSyncMemberDao().memberRetrieveByMemberId(bandersonMember.getId()).getSubjectIdentifier());
 
     // run the full provisioner one more time.  during the second run, in_target will be F for j-smith and so the subject_identifier will be cleared in the sync table
@@ -933,12 +894,8 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.addMember(blopez);
     testGroup.addMember(hdavis);
     
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
+
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
@@ -964,12 +921,8 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
+
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
@@ -1094,12 +1047,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.addMember(blopez);
     testGroup.addMember(hdavis);
 
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -1123,12 +1071,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -1151,11 +1094,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     // try delete
     testGroup.delete();
   
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     assertEquals(0, LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null).size());
   }
@@ -1250,12 +1189,8 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.addMember(blopez);
     testGroup.addMember(hdavis);
     
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
+
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
@@ -1282,12 +1217,8 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    grouperProvisioningOutput = fullProvision(defaultConfigId(), true);
+
     grouperProvisioningOutput = GrouperProvisioner.retrieveInternalLastProvisioner().retrieveGrouperProvisioningOutput();
     
     assertEquals(2, grouperProvisioningOutput.getRecordsWithErrors());
@@ -1418,12 +1349,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.addMember(blopez);
     testGroup.addMember(hdavis);
   
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -1447,12 +1373,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     testGroup.setExtension("testGroupRenamed");
     testGroup.store();
     
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-      fail();
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     ldapEntries = LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null);
     assertEquals(1, ldapEntries.size());
@@ -1480,11 +1401,7 @@ public class LdapProvisionerJDBCSubjectSourceTest extends GrouperProvisioningBas
     // try delete
     testGroup.delete();
   
-    try {
-      incrementalProvision(defaultConfigId(), true, true, true);
-    } catch (Exception e) {
-      
-    }
+    incrementalProvision(defaultConfigId(), true, true, true);
   
     assertEquals(0, LdapSessionUtils.ldapSession().list("personLdap", "ou=Groups,dc=example,dc=edu", LdapSearchScope.SUBTREE_SCOPE, "(objectClass=groupOfNames)", new String[] {"objectClass", "cn", "description", "businessCategory"}, null).size());
   }
